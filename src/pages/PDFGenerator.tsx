@@ -1,195 +1,250 @@
-import React, { useState, useEffect } from "react";
-import { Document, Page, Text, View, Image, StyleSheet, pdf } from "@react-pdf/renderer";
+import React, { useRef, useState, useEffect } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
+import { XMarkIcon, EyeIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { emailService } from "../services/emailService";
-import type { EmailSender } from "../types";
+import type { EmailSender, SendTestEmailRequest } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
 import ErrorBanner from "../components/ErrorBanner";
-import logoImage from "../assets/Transparent_Image_5.png";
-
-const styles = StyleSheet.create({
-  page: {
-    padding: 40,
-    fontSize: 12,
-    fontFamily: "Helvetica",
-  },
-  header: {
-    marginBottom: 30,
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
-  },
-  content: {
-    marginTop: 20,
-    lineHeight: 1.6,
-  },
-});
-
-interface PDFDocProps {
-  content: string;
-  title?: string;
-  logoPath?: string;
-}
-
-const PDFDoc: React.FC<PDFDocProps> = ({ content, title, logoPath }) => {
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>{logoPath && <Image src={logoPath} style={styles.logo} />}</View>
-        {title && (
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ fontSize: 18, fontWeight: "bold" }}>{title}</Text>
-          </View>
-        )}
-        <View style={styles.content}>
-          <Text>{content}</Text>
-        </View>
-      </Page>
-    </Document>
-  );
-};
 
 const PDFGenerator: React.FC = () => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [subject, setSubject] = useState("PDF Document");
-  const [emailContent, setEmailContent] = useState("Please find the attached PDF document.");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
-
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [title, setTitle] = useState<string>("My Document");
+  const [content, setContent] = useState<string>("Enter your content here...");
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  
   // Email functionality state
   const [emails, setEmails] = useState<EmailSender[]>([]);
-  const [fromEmail, setFromEmail] = useState("");
-  const [toEmails, setToEmails] = useState<string[]>([]);
-  const [ccEmails, setCcEmails] = useState<string[]>([]);
-  const [bccEmails, setBccEmails] = useState<string[]>([]);
+  const [emailDialogOpen, setEmailDialogOpen] = useState<boolean>(false);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [emailFormData, setEmailFormData] = useState({
+    fromEmail: "",
+    toEmails: [] as string[],
+    ccEmails: [] as string[],
+    bccEmails: [] as string[],
+    subject: "",
+    content: "",
+  });
   const [toEmailInput, setToEmailInput] = useState("");
   const [ccEmailInput, setCcEmailInput] = useState("");
   const [bccEmailInput, setBccEmailInput] = useState("");
+  const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
+  
+  // PDF Preview state
+  const [previewDialogOpen, setPreviewDialogOpen] = useState<boolean>(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
 
-  // Load email senders on mount
+  // Load emails on mount
   useEffect(() => {
-    const loadEmails = async () => {
-      try {
-        const data = await emailService.getAllEmails();
-        setEmails(data.emails);
-        if (data.emails.length > 0) {
-          setFromEmail(data.emails[0].email);
-        }
-      } catch (error) {
-        console.error("Error loading email senders:", error);
-      }
-    };
     loadEmails();
   }, []);
 
-  // Convert logo image to data URL for react-pdf
-  useEffect(() => {
-    const convertImageToDataUrl = async () => {
-      try {
-        const response = await fetch(logoImage);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setLogoDataUrl(reader.result as string);
-        };
-        reader.readAsDataURL(blob);
-      } catch (error) {
-        console.error("Error loading logo:", error);
-      }
-    };
-    convertImageToDataUrl();
-  }, []);
-
-  // Cleanup preview URL on unmount
+  // Cleanup blob URL on unmount
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
+      if (previewPdfUrl) {
+        URL.revokeObjectURL(previewPdfUrl);
       }
     };
-  }, [previewUrl]);
+  }, [previewPdfUrl]);
 
-  const sanitizeFileName = (fileName: string): string => {
-    // Remove or replace invalid filename characters
-    return (
-      fileName
-        .replace(/[<>:"/\\|?*]/g, "") // Remove invalid characters
-        .replace(/\s+/g, "_") // Replace spaces with underscores
-        .trim() || "document"
-    ); // Default to 'document' if empty
-  };
-
-  const getFileName = (): string => {
-    const sanitizedTitle = title.trim() ? sanitizeFileName(title.trim()) : "document";
-    return `${sanitizedTitle}.pdf`;
-  };
-
-  const handlePreviewPDF = async () => {
-    if (!content.trim()) {
-      setErrorMessage("Please enter some content for the PDF.");
-      return;
-    }
-
-    setErrorMessage(null);
-    setShowPreview(true);
-
+  const loadEmails = async () => {
     try {
-      const doc = <PDFDoc content={content} title={title.trim() || undefined} logoPath={logoDataUrl || undefined} />;
-      const blob = await pdf(doc).toBlob();
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-    } catch (error) {
-      console.error("Error generating PDF preview:", error);
-      setErrorMessage("Failed to generate PDF preview. Please try again.");
-      setShowPreview(false);
+      const data = await emailService.getAllEmails();
+      setEmails(data.emails);
+      if (data.emails.length > 0) {
+        setEmailFormData(prev => ({
+          ...prev,
+          fromEmail: data.emails[0].email,
+        }));
+      }
+    } catch (err: any) {
+      console.error("Failed to load emails:", err);
     }
   };
 
-  const handleGeneratePDF = async () => {
-    if (!content.trim()) {
-      setErrorMessage("Please enter some content for the PDF.");
+  // Convert oklch colors to RGB for html2canvas compatibility
+  const convertOklchToRgb = (element: HTMLElement) => {
+    const computedStyle = window.getComputedStyle(element);
+    const allElements = element.querySelectorAll("*");
+    
+    // Process the element itself
+    const bgColor = computedStyle.backgroundColor;
+    const color = computedStyle.color;
+    
+    // If colors are transparent or already RGB, skip
+    if (bgColor && bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)") {
+      element.style.backgroundColor = bgColor;
+    }
+    if (color && color !== "transparent") {
+      element.style.color = color;
+    }
+
+    // Process all child elements
+    allElements.forEach((el) => {
+      const elStyle = window.getComputedStyle(el);
+      const elBgColor = elStyle.backgroundColor;
+      const elColor = elStyle.color;
+      
+      if (elBgColor && elBgColor !== "transparent" && elBgColor !== "rgba(0, 0, 0, 0)") {
+        (el as HTMLElement).style.backgroundColor = elBgColor;
+      }
+      if (elColor && elColor !== "transparent") {
+        (el as HTMLElement).style.color = elColor;
+      }
+    });
+  };
+
+  const createPDF = async () => {
+    if (!contentRef.current) {
+      return null;
+    }
+
+    // Capture the content as canvas with onclone to fix oklch colors
+    const canvas = await html2canvas(contentRef.current, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+      onclone: (clonedDoc) => {
+        const clonedElement = clonedDoc.querySelector("[data-pdf-content]") as HTMLElement;
+        if (clonedElement) {
+          convertOklchToRgb(clonedElement);
+        }
+      },
+    });
+
+    // Calculate PDF dimensions
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+
+    // Create PDF
+    const pdf = new jsPDF("p", "mm", "a4");
+    let position = 0;
+
+    // Convert canvas to image
+    const imgData = canvas.toDataURL("image/png");
+
+    // Add first page
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    // Add additional pages if content is longer than one page
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf;
+  };
+
+  const generatePDF = async (forEmail: boolean = false) => {
+    if (!contentRef.current) {
       return;
     }
 
     setIsGenerating(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    setError(null);
 
     try {
-      const doc = <PDFDoc content={content} title={title.trim() || undefined} logoPath={logoDataUrl || undefined} />;
-      const blob = await pdf(doc).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = getFileName();
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      setSuccessMessage("PDF generated and downloaded successfully!");
+      const pdf = await createPDF();
+      if (!pdf) {
+        setError("Failed to generate PDF");
+        return;
+      }
+
+      if (forEmail) {
+        // Convert PDF to blob for email attachment
+        const pdfBlob = pdf.output("blob");
+        setGeneratedPdfBlob(pdfBlob);
+        setEmailDialogOpen(true);
+        setEmailFormData(prev => ({
+          ...prev,
+          subject: title || "PDF Document",
+          content: `Please find attached the PDF document: ${title || "document"}.pdf`,
+        }));
+      } else {
+        // Save the PDF
+        pdf.save(`${title || "document"}.pdf`);
+        setSuccess("PDF generated successfully!");
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
-      setErrorMessage("Failed to generate PDF. Please try again.");
+      setError("Failed to generate PDF. Please try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const addEmailToArray = (email: string, array: string[]): string[] | null => {
+  const previewPDF = async () => {
+    if (!contentRef.current) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const pdf = await createPDF();
+      if (!pdf) {
+        setError("Failed to generate PDF");
+        return;
+      }
+
+      // Convert PDF to blob and create URL for preview
+      const pdfBlob = pdf.output("blob");
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      // Clean up previous URL if exists
+      if (previewPdfUrl) {
+        URL.revokeObjectURL(previewPdfUrl);
+      }
+      
+      setPreviewPdfUrl(pdfUrl);
+      setPreviewDialogOpen(true);
+    } catch (error) {
+      console.error("Error generating PDF preview:", error);
+      setError("Failed to generate PDF preview. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const closePreviewDialog = () => {
+    setPreviewDialogOpen(false);
+    if (previewPdfUrl) {
+      URL.revokeObjectURL(previewPdfUrl);
+      setPreviewPdfUrl(null);
+    }
+  };
+
+  const downloadFromPreview = () => {
+    if (previewPdfUrl) {
+      const link = document.createElement("a");
+      link.href = previewPdfUrl;
+      link.download = `${title || "document"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccess("PDF downloaded successfully!");
+    }
+  };
+
+  const addEmailToArray = (email: string, array: string[]) => {
     const trimmedEmail = email.trim();
     if (trimmedEmail && !array.includes(trimmedEmail)) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (emailRegex.test(trimmedEmail)) {
         return [...array, trimmedEmail];
       } else {
-        setErrorMessage(`Invalid email format: ${trimmedEmail}`);
+        setError(`Invalid email format: ${trimmedEmail}`);
         return null;
       }
     }
@@ -197,426 +252,484 @@ const PDFGenerator: React.FC = () => {
   };
 
   const addToEmail = () => {
-    const result = addEmailToArray(toEmailInput, toEmails);
+    const result = addEmailToArray(toEmailInput, emailFormData.toEmails);
     if (result !== null) {
-      setToEmails(result);
+      setEmailFormData({ ...emailFormData, toEmails: result });
       setToEmailInput("");
     }
   };
 
   const addCcEmail = () => {
-    const result = addEmailToArray(ccEmailInput, ccEmails);
+    const result = addEmailToArray(ccEmailInput, emailFormData.ccEmails);
     if (result !== null) {
-      setCcEmails(result);
+      setEmailFormData({ ...emailFormData, ccEmails: result });
       setCcEmailInput("");
     }
   };
 
   const addBccEmail = () => {
-    const result = addEmailToArray(bccEmailInput, bccEmails);
+    const result = addEmailToArray(bccEmailInput, emailFormData.bccEmails);
     if (result !== null) {
-      setBccEmails(result);
+      setEmailFormData({ ...emailFormData, bccEmails: result });
       setBccEmailInput("");
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!content.trim()) {
-      setErrorMessage("Please enter some content for the PDF.");
-      return;
-    }
-
-    setIsSending(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      // Add any pending email inputs to arrays
-      let finalToEmails = [...toEmails];
-      let finalCcEmails = [...ccEmails];
-      let finalBccEmails = [...bccEmails];
-
-      if (toEmailInput.trim()) {
-        const result = addEmailToArray(toEmailInput, finalToEmails);
-        if (result === null) {
-          setIsSending(false);
-          return;
-        }
-        finalToEmails = result;
-      }
-
-      if (ccEmailInput.trim()) {
-        const result = addEmailToArray(ccEmailInput, finalCcEmails);
-        if (result === null) {
-          setIsSending(false);
-          return;
-        }
-        finalCcEmails = result;
-      }
-
-      if (bccEmailInput.trim()) {
-        const result = addEmailToArray(bccEmailInput, finalBccEmails);
-        if (result === null) {
-          setIsSending(false);
-          return;
-        }
-        finalBccEmails = result;
-      }
-
-      if (finalToEmails.length === 0) {
-        setErrorMessage("Please add at least one recipient email address.");
-        setIsSending(false);
-        return;
-      }
-
-      if (emails.length === 0) {
-        setErrorMessage("No email senders configured. Please configure an email sender in settings.");
-        setIsSending(false);
-        return;
-      }
-
-      if (!fromEmail) {
-        setErrorMessage("Please select a from email address.");
-        setIsSending(false);
-        return;
-      }
-
-      // Generate PDF blob
-      const doc = <PDFDoc content={content} title={title.trim() || undefined} logoPath={logoDataUrl || undefined} />;
-      const blob = await pdf(doc).toBlob();
-
-      // Convert blob to File with title as filename
-      const pdfFile = new File([blob], getFileName(), { type: "application/pdf" });
-
-      // Send email with PDF attachment
-      await emailService.sendTestEmail({
-        fromEmail,
-        toEmails: finalToEmails,
-        ccEmails: finalCcEmails.length > 0 ? finalCcEmails : undefined,
-        bccEmails: finalBccEmails.length > 0 ? finalBccEmails : undefined,
-        subject,
-        content: emailContent,
-        attachments: [pdfFile],
-      });
-
-      setSuccessMessage("PDF generated and sent via email successfully!");
-      setErrorMessage(null);
-    } catch (error: any) {
-      console.error("Error sending email:", error);
-      const errorMsg =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        "Failed to send email. Please check your email configuration and try again.";
-      setErrorMessage(errorMsg);
-      setSuccessMessage(null);
-    } finally {
-      setIsSending(false);
+  const removeEmail = (email: string, type: "to" | "cc" | "bcc") => {
+    if (type === "to") {
+      setEmailFormData({ ...emailFormData, toEmails: emailFormData.toEmails.filter(e => e !== email) });
+    } else if (type === "cc") {
+      setEmailFormData({ ...emailFormData, ccEmails: emailFormData.ccEmails.filter(e => e !== email) });
+    } else {
+      setEmailFormData({ ...emailFormData, bccEmails: emailFormData.bccEmails.filter(e => e !== email) });
     }
   };
 
+  const handleSendEmail = async () => {
+    try {
+      setError(null);
+      setSendingEmail(true);
+
+      // Add any pending email inputs to arrays
+      let toEmails = [...emailFormData.toEmails];
+      let ccEmails = [...emailFormData.ccEmails];
+      let bccEmails = [...emailFormData.bccEmails];
+
+      if (toEmailInput.trim()) {
+        const result = addEmailToArray(toEmailInput, toEmails);
+        if (result === null) {
+          setSendingEmail(false);
+          return;
+        }
+        toEmails = result;
+      }
+
+      if (ccEmailInput.trim()) {
+        const result = addEmailToArray(ccEmailInput, ccEmails);
+        if (result === null) {
+          setSendingEmail(false);
+          return;
+        }
+        ccEmails = result;
+      }
+
+      if (bccEmailInput.trim()) {
+        const result = addEmailToArray(bccEmailInput, bccEmails);
+        if (result === null) {
+          setSendingEmail(false);
+          return;
+        }
+        bccEmails = result;
+      }
+
+      if (
+        !emailFormData.fromEmail ||
+        toEmails.length === 0 ||
+        !emailFormData.subject ||
+        !emailFormData.content ||
+        !generatedPdfBlob
+      ) {
+        setError("From email, at least one recipient, subject, content, and PDF are required");
+        setSendingEmail(false);
+        return;
+      }
+
+      // Convert blob to File for attachment
+      const pdfFile = new File([generatedPdfBlob], `${title || "document"}.pdf`, {
+        type: "application/pdf",
+      });
+
+      const emailData: SendTestEmailRequest = {
+        fromEmail: emailFormData.fromEmail,
+        toEmails: toEmails,
+        ccEmails: ccEmails.length > 0 ? ccEmails : undefined,
+        bccEmails: bccEmails.length > 0 ? bccEmails : undefined,
+        subject: emailFormData.subject,
+        content: emailFormData.content,
+        attachments: [pdfFile],
+      };
+
+      await emailService.sendTestEmail(emailData);
+      setSuccess("Email sent successfully!");
+      setEmailDialogOpen(false);
+      setGeneratedPdfBlob(null);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const closeEmailDialog = () => {
+    setEmailDialogOpen(false);
+    setError(null);
+    setEmailFormData({
+      fromEmail: emails[0]?.email || "",
+      toEmails: [],
+      ccEmails: [],
+      bccEmails: [],
+      subject: title || "PDF Document",
+      content: `Please find attached the PDF document: ${title || "document"}.pdf`,
+    });
+    setToEmailInput("");
+    setCcEmailInput("");
+    setBccEmailInput("");
+    setGeneratedPdfBlob(null);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">PDF Generator</h1>
+    <div className="space-y-6">
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+      {success && <SuccessBanner message={success} onDismiss={() => setSuccess(null)} />}
 
-      {errorMessage && (
-        <div className="mb-4">
-          <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage(null)} />
-        </div>
-      )}
-      {successMessage && (
-        <div className="mb-4">
-          <SuccessBanner message={successMessage} onDismiss={() => setSuccessMessage(null)} />
-        </div>
-      )}
-
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">PDF Content</h2>
-
-        <div className="mb-4">
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-            Document Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter document title (used as filename)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            This title will be used as the filename when downloading or sending the PDF.
-          </p>
-        </div>
-
-        <div className="mb-4">
-          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-            Document Content
-          </label>
-          <textarea
-            id="content"
-            rows={8}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Enter the content for your PDF document..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          />
-        </div>
-
-        <div className="flex gap-4">
-          <button
-            onClick={handlePreviewPDF}
-            disabled={isGenerating || isSending}
-            className="px-4 py-2 bg-secondary-300 text-white rounded-md hover:bg-secondary-400 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Preview PDF
-          </button>
-          <button
-            onClick={handleGeneratePDF}
-            disabled={isGenerating || isSending}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isGenerating ? "Generating..." : "Generate & Download PDF"}
-          </button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">PDF Generator</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Create PDF documents from your content using html2canvas and jsPDF
+        </p>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Send via Email</h2>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Input Section */}
         <div className="space-y-4">
-          <div>
-            <label htmlFor="fromEmail" className="block text-sm font-medium text-gray-700 mb-2">
-              From Email
-            </label>
-            <select
-              id="fromEmail"
-              value={fromEmail}
-              onChange={(e) => {
-                setFromEmail(e.target.value);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            >
-              {emails.map((email) => (
-                <option key={email.id} value={email.email}>
-                  {email.email}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="toEmail" className="block text-sm font-medium text-gray-700 mb-2">
-              To Email(s) *
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                id="toEmail"
-                value={toEmailInput}
-                onChange={(e) => setToEmailInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addToEmail();
-                  }
-                }}
-                placeholder="recipient@example.com"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              />
-              <button
-                type="button"
-                onClick={addToEmail}
-                className="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-semibold cursor-pointer"
-              >
-                Add
-              </button>
-            </div>
-            {toEmails.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {toEmails.map((email, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700"
-                  >
-                    {email}
-                    <button
-                      type="button"
-                      onClick={() => setToEmails(toEmails.filter((_, i) => i !== idx))}
-                      className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Settings</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                  Document Title
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter document title"
+                />
               </div>
-            )}
-          </div>
 
-          <div>
-            <label htmlFor="ccEmail" className="block text-sm font-medium text-gray-700 mb-2">
-              CC Email(s)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                id="ccEmail"
-                autoComplete="email-cc"
-                value={ccEmailInput}
-                onChange={(e) => setCcEmailInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addCcEmail();
-                  }
-                }}
-                placeholder="cc@example.com"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              />
-              <button
-                type="button"
-                onClick={addCcEmail}
-                className="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-semibold cursor-pointer"
-              >
-                Add
-              </button>
-            </div>
-            {ccEmails.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {ccEmails.map((email, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700"
-                  >
-                    {email}
-                    <button
-                      type="button"
-                      onClick={() => setCcEmails(ccEmails.filter((_, i) => i !== idx))}
-                      className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+              <div>
+                <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+                  Content
+                </label>
+                <textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={10}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  placeholder="Enter your content here..."
+                />
               </div>
-            )}
-          </div>
 
-          <div>
-            <label htmlFor="bccEmail" className="block text-sm font-medium text-gray-700 mb-2">
-              BCC Email(s)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                id="bccEmail"
-                autoComplete="email-bcc"
-                value={bccEmailInput}
-                onChange={(e) => setBccEmailInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addBccEmail();
-                  }
-                }}
-                placeholder="bcc@example.com"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              />
-              <button
-                type="button"
-                onClick={addBccEmail}
-                className="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-semibold cursor-pointer"
-              >
-                Add
-              </button>
-            </div>
-            {bccEmails.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {bccEmails.map((email, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700"
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <button
+                    onClick={previewPDF}
+                    disabled={isGenerating}
+                    className="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {email}
-                    <button
-                      type="button"
-                      onClick={() => setBccEmails(bccEmails.filter((_, i) => i !== idx))}
-                      className="text-gray-500 hover:text-gray-700 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                    <EyeIcon className="h-5 w-5" />
+                    {isGenerating ? "Generating..." : "Preview PDF"}
+                  </button>
+                  <button
+                    onClick={() => generatePDF(false)}
+                    disabled={isGenerating}
+                    className="flex-1 flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                    {isGenerating ? "Generating..." : "Download PDF"}
+                  </button>
+                </div>
+                <button
+                  onClick={() => generatePDF(true)}
+                  disabled={isGenerating || emails.length === 0}
+                  className="w-full bg-secondary-600 text-white px-4 py-2 rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGenerating ? "Generating..." : "Generate & Email PDF"}
+                </button>
               </div>
-            )}
+              {emails.length === 0 && (
+                <p className="text-sm text-amber-600">
+                  No email senders configured. Please configure email senders in Settings to use email functionality.
+                </p>
+              )}
+            </div>
           </div>
+        </div>
 
-          <div>
-            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Subject
-            </label>
-            <input
-              type="text"
-              id="subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Email subject"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            />
+        {/* Preview Section */}
+        <div className="space-y-4">
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
+            
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 max-h-[600px] overflow-auto">
+              <div
+                ref={contentRef}
+                data-pdf-content
+                className="bg-white p-8 rounded shadow-sm"
+                style={{ minHeight: "200px", backgroundColor: "#ffffff", color: "#111827" }}
+              >
+                <h1 className="text-2xl font-bold mb-4" style={{ color: "#111827" }}>{title}</h1>
+                <div className="whitespace-pre-wrap" style={{ color: "#374151" }}>{content}</div>
+              </div>
+            </div>
           </div>
-
-          <div>
-            <label htmlFor="emailContent" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Content
-            </label>
-            <textarea
-              id="emailContent"
-              rows={4}
-              value={emailContent}
-              onChange={(e) => setEmailContent(e.target.value)}
-              placeholder="Email message content..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-
-          <button
-            onClick={handleSendEmail}
-            disabled={isGenerating || isSending || emails.length === 0}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSending ? "Sending..." : "Generate & Send PDF via Email"}
-          </button>
-          {emails.length === 0 && (
-            <p className="text-sm text-gray-500">
-              No email senders configured. Please configure an email sender in settings.
-            </p>
-          )}
         </div>
       </div>
 
-      {/* PDF Preview */}
-      {showPreview && previewUrl && (
-        <div className="mt-6 bg-white shadow rounded-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">PDF Preview</h2>
-            <button
-              onClick={() => {
-                setShowPreview(false);
-                if (previewUrl) {
-                  URL.revokeObjectURL(previewUrl);
-                  setPreviewUrl(null);
-                }
-              }}
-              className="text-sm text-gray-600 hover:text-gray-900 font-semibold cursor-pointer"
-            >
-              Close Preview
-            </button>
-          </div>
-          <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-            <iframe src={previewUrl} className="w-full h-96 border border-gray-300 rounded" title="PDF Preview" />
-          </div>
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onClose={closeEmailDialog} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
+          <DialogPanel className="max-w-2xl w-full bg-white rounded-lg shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <DialogTitle className="text-lg font-semibold text-gray-900">Send PDF via Email</DialogTitle>
+              <button
+                onClick={closeEmailDialog}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  From Email
+                </label>
+                <select
+                  value={emailFormData.fromEmail}
+                  onChange={(e) => setEmailFormData({ ...emailFormData, fromEmail: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  {emails.map((email) => (
+                    <option key={email.id} value={email.email}>
+                      {email.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  To Emails
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    value={toEmailInput}
+                    onChange={(e) => setToEmailInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addToEmail();
+                      }
+                    }}
+                    placeholder="Enter email and press Enter"
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  <button
+                    onClick={addToEmail}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+                {emailFormData.toEmails.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {emailFormData.toEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm"
+                      >
+                        {email}
+                        <button
+                          onClick={() => removeEmail(email, "to")}
+                          className="text-primary-600 hover:text-primary-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CC Emails (Optional)
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    value={ccEmailInput}
+                    onChange={(e) => setCcEmailInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCcEmail();
+                      }
+                    }}
+                    placeholder="Enter email and press Enter"
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  <button
+                    onClick={addCcEmail}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+                {emailFormData.ccEmails.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {emailFormData.ccEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm"
+                      >
+                        {email}
+                        <button
+                          onClick={() => removeEmail(email, "cc")}
+                          className="text-primary-600 hover:text-primary-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  BCC Emails (Optional)
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="email"
+                    value={bccEmailInput}
+                    onChange={(e) => setBccEmailInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addBccEmail();
+                      }
+                    }}
+                    placeholder="Enter email and press Enter"
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  <button
+                    onClick={addBccEmail}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+                {emailFormData.bccEmails.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {emailFormData.bccEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm"
+                      >
+                        {email}
+                        <button
+                          onClick={() => removeEmail(email, "bcc")}
+                          className="text-primary-600 hover:text-primary-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  value={emailFormData.subject}
+                  onChange={(e) => setEmailFormData({ ...emailFormData, subject: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Content
+                </label>
+                <textarea
+                  value={emailFormData.content}
+                  onChange={(e) => setEmailFormData({ ...emailFormData, content: e.target.value })}
+                  rows={5}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={closeEmailDialog}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sendingEmail}
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingEmail ? "Sending..." : "Send Email"}
+                </button>
+              </div>
+            </div>
+          </DialogPanel>
         </div>
-      )}
+      </Dialog>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={previewDialogOpen} onClose={closePreviewDialog} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
+          <DialogPanel className="max-w-6xl w-full bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                PDF Preview - {title || "document"}
+              </DialogTitle>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={downloadFromPreview}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Download
+                </button>
+                <button
+                  onClick={closePreviewDialog}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewPdfUrl && (
+                <iframe
+                  src={previewPdfUrl}
+                  className="w-full h-full border-0"
+                  title="PDF Preview"
+                  style={{ minHeight: "600px" }}
+                />
+              )}
+            </div>
+          </DialogPanel>
+        </div>
+      </Dialog>
     </div>
   );
 };
