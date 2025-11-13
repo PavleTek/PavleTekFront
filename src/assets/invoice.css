@@ -1,0 +1,66 @@
+.invoice-page {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  background: #ffffff;
+  font-family: "Helvetica", sans-serif;
+  color: #222;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* both stripes share base styling */
+.top-background-line,
+.bottom-background-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  z-index: 0; /* keep them behind content */
+}
+
+/* top stripe */
+.top-background-line {
+  position: absolute;
+  top: 0mm; /* hide top edge overflow */
+  left: -25%;
+  width: 220%;
+  height: 115mm;
+  background: linear-gradient(180deg, #75c8c7, #53b5ce);
+  transform: rotate(-15deg);
+  transform-origin: top left;
+  z-index: 0;
+}
+
+/* bottom stripe */
+.bottom-background-line {
+  position: absolute;
+  bottom: -65mm; /* hide lower overflow */
+  left: -5%;
+  width: 220%;
+  height: 70mm;
+  background: linear-gradient(180deg, #88d2c4, #9edebf);
+  transform: rotate(-15deg);
+  transform-origin: bottom left;
+  z-index: 0;
+}
+
+/* content stays above background */
+.invoice-content {
+  padding: 5mm;
+  position: relative;
+  color: black;
+  z-index: 1;
+}
+
+.kind-of-green-color {
+  color: #236c63;
+}
+
+.separator-30-mm {
+  height: 30mm;
+}
+
+.horizontal-line-separator {
+    border-bottom-width: 3px;
+    border-bottom-color: black;
+}

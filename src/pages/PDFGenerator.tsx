@@ -7,13 +7,14 @@ import { emailService } from "../services/emailService";
 import type { EmailSender, SendTestEmailRequest } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
 import ErrorBanner from "../components/ErrorBanner";
+import "../assets/invoice.css";
 
 const PDFGenerator: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState<string>("My Document");
   const [content, setContent] = useState<string>("Enter your content here...");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  
+
   // Email functionality state
   const [emails, setEmails] = useState<EmailSender[]>([]);
   const [emailDialogOpen, setEmailDialogOpen] = useState<boolean>(false);
@@ -32,7 +33,7 @@ const PDFGenerator: React.FC = () => {
   const [ccEmailInput, setCcEmailInput] = useState("");
   const [bccEmailInput, setBccEmailInput] = useState("");
   const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
-  
+
   // PDF Preview state
   const [previewDialogOpen, setPreviewDialogOpen] = useState<boolean>(false);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
@@ -56,7 +57,7 @@ const PDFGenerator: React.FC = () => {
       const data = await emailService.getAllEmails();
       setEmails(data.emails);
       if (data.emails.length > 0) {
-        setEmailFormData(prev => ({
+        setEmailFormData((prev) => ({
           ...prev,
           fromEmail: data.emails[0].email,
         }));
@@ -70,11 +71,11 @@ const PDFGenerator: React.FC = () => {
   const convertOklchToRgb = (element: HTMLElement) => {
     const computedStyle = window.getComputedStyle(element);
     const allElements = element.querySelectorAll("*");
-    
+
     // Process the element itself
     const bgColor = computedStyle.backgroundColor;
     const color = computedStyle.color;
-    
+
     // If colors are transparent or already RGB, skip
     if (bgColor && bgColor !== "transparent" && bgColor !== "rgba(0, 0, 0, 0)") {
       element.style.backgroundColor = bgColor;
@@ -88,7 +89,7 @@ const PDFGenerator: React.FC = () => {
       const elStyle = window.getComputedStyle(el);
       const elBgColor = elStyle.backgroundColor;
       const elColor = elStyle.color;
-      
+
       if (elBgColor && elBgColor !== "transparent" && elBgColor !== "rgba(0, 0, 0, 0)") {
         (el as HTMLElement).style.backgroundColor = elBgColor;
       }
@@ -165,7 +166,7 @@ const PDFGenerator: React.FC = () => {
         const pdfBlob = pdf.output("blob");
         setGeneratedPdfBlob(pdfBlob);
         setEmailDialogOpen(true);
-        setEmailFormData(prev => ({
+        setEmailFormData((prev) => ({
           ...prev,
           subject: title || "PDF Document",
           content: `Please find attached the PDF document: ${title || "document"}.pdf`,
@@ -201,12 +202,12 @@ const PDFGenerator: React.FC = () => {
       // Convert PDF to blob and create URL for preview
       const pdfBlob = pdf.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
-      
+
       // Clean up previous URL if exists
       if (previewPdfUrl) {
         URL.revokeObjectURL(previewPdfUrl);
       }
-      
+
       setPreviewPdfUrl(pdfUrl);
       setPreviewDialogOpen(true);
     } catch (error) {
@@ -277,11 +278,11 @@ const PDFGenerator: React.FC = () => {
 
   const removeEmail = (email: string, type: "to" | "cc" | "bcc") => {
     if (type === "to") {
-      setEmailFormData({ ...emailFormData, toEmails: emailFormData.toEmails.filter(e => e !== email) });
+      setEmailFormData({ ...emailFormData, toEmails: emailFormData.toEmails.filter((e) => e !== email) });
     } else if (type === "cc") {
-      setEmailFormData({ ...emailFormData, ccEmails: emailFormData.ccEmails.filter(e => e !== email) });
+      setEmailFormData({ ...emailFormData, ccEmails: emailFormData.ccEmails.filter((e) => e !== email) });
     } else {
-      setEmailFormData({ ...emailFormData, bccEmails: emailFormData.bccEmails.filter(e => e !== email) });
+      setEmailFormData({ ...emailFormData, bccEmails: emailFormData.bccEmails.filter((e) => e !== email) });
     }
   };
 
@@ -322,13 +323,7 @@ const PDFGenerator: React.FC = () => {
         bccEmails = result;
       }
 
-      if (
-        !emailFormData.fromEmail ||
-        toEmails.length === 0 ||
-        !emailFormData.subject ||
-        !emailFormData.content ||
-        !generatedPdfBlob
-      ) {
+      if (!emailFormData.fromEmail || toEmails.length === 0 || !emailFormData.subject || !emailFormData.content || !generatedPdfBlob) {
         setError("From email, at least one recipient, subject, content, and PDF are required");
         setSendingEmail(false);
         return;
@@ -377,6 +372,11 @@ const PDFGenerator: React.FC = () => {
     setGeneratedPdfBlob(null);
   };
 
+  const invoiceItems: any = [
+    { quantity: 100, description: "Software development Services Performed by Vittorio Gambi", unitPrice: 30, total: 3000 },
+    { quantity: 200, description: "Software development Services Performed by Pavle Markovic", unitPrice: 35, total: 7000 },
+  ];
+
   return (
     <div className="space-y-6">
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
@@ -384,9 +384,7 @@ const PDFGenerator: React.FC = () => {
 
       <div>
         <h1 className="text-2xl font-bold text-gray-900">PDF Generator</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Create PDF documents from your content using html2canvas and jsPDF
-        </p>
+        <p className="mt-1 text-sm text-gray-600">Create PDF documents from your content using html2canvas and jsPDF</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -394,7 +392,7 @@ const PDFGenerator: React.FC = () => {
         <div className="space-y-4">
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Settings</h2>
-            
+
             <div className="space-y-4">
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
@@ -452,9 +450,7 @@ const PDFGenerator: React.FC = () => {
                 </button>
               </div>
               {emails.length === 0 && (
-                <p className="text-sm text-amber-600">
-                  No email senders configured. Please configure email senders in Settings to use email functionality.
-                </p>
+                <p className="text-sm text-amber-600">No email senders configured. Please configure email senders in Settings to use email functionality.</p>
               )}
             </div>
           </div>
@@ -464,16 +460,72 @@ const PDFGenerator: React.FC = () => {
         <div className="space-y-4">
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
-            
+
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 max-h-[600px] overflow-auto">
-              <div
-                ref={contentRef}
-                data-pdf-content
-                className="bg-white p-8 rounded shadow-sm"
-                style={{ minHeight: "200px", backgroundColor: "#ffffff", color: "#111827" }}
-              >
-                <h1 className="text-2xl font-bold mb-4" style={{ color: "#111827" }}>{title}</h1>
-                <div className="whitespace-pre-wrap" style={{ color: "#374151" }}>{content}</div>
+              <div ref={contentRef} data-pdf-content className="invoice-page rounded shadow-sm">
+                {/* Background layers */}
+                <div className="top-background-line"></div>
+                <div className="bottom-background-line"></div>
+
+                {/* Actual content (above backgrounds) */}
+                <div className="invoice-content flex-column">
+                  <h1 className="text-3xl font-bold mb-8" style={{ color: "#000000ff" }}>
+                    INVOICE
+                  </h1>
+                  {/* <div className="flex justify-between">
+                    <div className="flex-column">
+                      <div className="font-bold text-lg">DATE</div>
+                      <div className=" text-base">28/10/2025</div>
+                    </div>
+                    <div className="flex-column">
+                      <div className="font-bold text-lg">Invoice Number</div>
+                      <div className="font-semibold text-base text-center">00042</div>
+                    </div>
+                    <div className="flex-column">
+                      <div className="font-bold text-lg text-right">PavleTek</div>
+                      <div className=" text-base text-right leading-none">7601 Churchill Way 1338</div>
+                      <div className=" text-base text-right leading-none">Dallas, TX, 75251</div>
+                      <div className=" text-base text-right leading-none">+1 940 603 9449</div>
+                      <div className=" text-base text-right leading-none">Pavle@PavleTek.com</div>
+                    </div>
+                  </div> */}
+                  <div className="grid grid-cols-3">
+                    <div className="flex-column justify-self-start">
+                      <div className="font-bold text-lgl">DATE</div>
+                      <div className=" text-base">28/10/2025</div>
+                    </div>
+                    <div className="flex-column justify-self-center">
+                      <div className="font-bold text-lg">Invoice Number</div>
+                      <div className="font-semibold text-base text-center">00042</div>
+                    </div>
+                    <div className="flex-column justify-self-right">
+                      <div className="font-bold text-lg text-right">PavleTek</div>
+                      <div className=" text-base text-right leading-none">7601 Churchill Way 1338</div>
+                      <div className=" text-base text-right leading-none">Dallas, TX, 75251</div>
+                      <div className=" text-base text-right leading-none">+1 940 603 9449</div>
+                      <div className=" text-base text-right leading-none">Pavle@PavleTek.com</div>
+                    </div>
+                  </div>
+                  <div className="flex-column pt-6">
+                    <div className="font-bold text-lg text-left">Invoice to</div>
+                    <div className=" text-base text-left leading-none">Kibernum USA LLC</div>
+                    <div className=" text-base text-left leading-none">5700 Granite Parkway STE 200</div>
+                    <div className=" text-base text-left leading-none">Plano, TX, 75024</div>
+                    <div className=" text-base text-left leading-none">Gvozden.Mladenovic@kibernum.com</div>
+                  </div>
+                  <div className="separator-30-mm" />
+                  <div className="flex-column pt-6 justify-center">
+                    <h3 className="font-bold text-2xl text-center kind-of-green-color">Invoice to</h3>
+                    <div className="text-base text-center">Software development services for October 2025 for the project STRD-0004</div>
+                  </div>
+                  <div className="flex-column pt-6 justify-center">
+                    <h3 className="font-bold text-2xl text-center kind-of-green-color">Invoice to</h3>
+                    <div className="text-base text-center">Software development services for October 2025 for the project STRD-0004</div>
+                  </div>
+                  <div className="whitespace-pre-wrap" style={{ color: "#374151" }}>
+                    {content}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -487,19 +539,14 @@ const PDFGenerator: React.FC = () => {
           <DialogPanel className="max-w-2xl w-full bg-white rounded-lg shadow-xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <DialogTitle className="text-lg font-semibold text-gray-900">Send PDF via Email</DialogTitle>
-              <button
-                onClick={closeEmailDialog}
-                className="text-gray-400 hover:text-gray-500"
-              >
+              <button onClick={closeEmailDialog} className="text-gray-400 hover:text-gray-500">
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  From Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">From Email</label>
                 <select
                   value={emailFormData.fromEmail}
                   onChange={(e) => setEmailFormData({ ...emailFormData, fromEmail: e.target.value })}
@@ -514,9 +561,7 @@ const PDFGenerator: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  To Emails
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">To Emails</label>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="email"
@@ -531,25 +576,16 @@ const PDFGenerator: React.FC = () => {
                     placeholder="Enter email and press Enter"
                     className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
-                  <button
-                    onClick={addToEmail}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
-                  >
+                  <button onClick={addToEmail} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm">
                     Add
                   </button>
                 </div>
                 {emailFormData.toEmails.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {emailFormData.toEmails.map((email) => (
-                      <span
-                        key={email}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm"
-                      >
+                      <span key={email} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm">
                         {email}
-                        <button
-                          onClick={() => removeEmail(email, "to")}
-                          className="text-primary-600 hover:text-primary-800"
-                        >
+                        <button onClick={() => removeEmail(email, "to")} className="text-primary-600 hover:text-primary-800">
                           ×
                         </button>
                       </span>
@@ -559,9 +595,7 @@ const PDFGenerator: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CC Emails (Optional)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">CC Emails (Optional)</label>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="email"
@@ -576,25 +610,16 @@ const PDFGenerator: React.FC = () => {
                     placeholder="Enter email and press Enter"
                     className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
-                  <button
-                    onClick={addCcEmail}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
-                  >
+                  <button onClick={addCcEmail} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm">
                     Add
                   </button>
                 </div>
                 {emailFormData.ccEmails.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {emailFormData.ccEmails.map((email) => (
-                      <span
-                        key={email}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm"
-                      >
+                      <span key={email} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm">
                         {email}
-                        <button
-                          onClick={() => removeEmail(email, "cc")}
-                          className="text-primary-600 hover:text-primary-800"
-                        >
+                        <button onClick={() => removeEmail(email, "cc")} className="text-primary-600 hover:text-primary-800">
                           ×
                         </button>
                       </span>
@@ -604,9 +629,7 @@ const PDFGenerator: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  BCC Emails (Optional)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">BCC Emails (Optional)</label>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="email"
@@ -621,25 +644,16 @@ const PDFGenerator: React.FC = () => {
                     placeholder="Enter email and press Enter"
                     className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
-                  <button
-                    onClick={addBccEmail}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
-                  >
+                  <button onClick={addBccEmail} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm">
                     Add
                   </button>
                 </div>
                 {emailFormData.bccEmails.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {emailFormData.bccEmails.map((email) => (
-                      <span
-                        key={email}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm"
-                      >
+                      <span key={email} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-800 rounded text-sm">
                         {email}
-                        <button
-                          onClick={() => removeEmail(email, "bcc")}
-                          className="text-primary-600 hover:text-primary-800"
-                        >
+                        <button onClick={() => removeEmail(email, "bcc")} className="text-primary-600 hover:text-primary-800">
                           ×
                         </button>
                       </span>
@@ -649,9 +663,7 @@ const PDFGenerator: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
                 <input
                   type="text"
                   value={emailFormData.subject}
@@ -661,9 +673,7 @@ const PDFGenerator: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Content
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Content</label>
                 <textarea
                   value={emailFormData.content}
                   onChange={(e) => setEmailFormData({ ...emailFormData, content: e.target.value })}
@@ -673,10 +683,7 @@ const PDFGenerator: React.FC = () => {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={closeEmailDialog}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
+                <button onClick={closeEmailDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
                   Cancel
                 </button>
                 <button
@@ -698,9 +705,7 @@ const PDFGenerator: React.FC = () => {
         <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
           <DialogPanel className="max-w-6xl w-full bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <DialogTitle className="text-lg font-semibold text-gray-900">
-                PDF Preview - {title || "document"}
-              </DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-gray-900">PDF Preview - {title || "document"}</DialogTitle>
               <div className="flex items-center gap-3">
                 <button
                   onClick={downloadFromPreview}
@@ -709,23 +714,13 @@ const PDFGenerator: React.FC = () => {
                   <ArrowDownTrayIcon className="h-4 w-4" />
                   Download
                 </button>
-                <button
-                  onClick={closePreviewDialog}
-                  className="text-gray-400 hover:text-gray-500"
-                >
+                <button onClick={closePreviewDialog} className="text-gray-400 hover:text-gray-500">
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
-              {previewPdfUrl && (
-                <iframe
-                  src={previewPdfUrl}
-                  className="w-full h-full border-0"
-                  title="PDF Preview"
-                  style={{ minHeight: "600px" }}
-                />
-              )}
+              {previewPdfUrl && <iframe src={previewPdfUrl} className="w-full h-full border-0" title="PDF Preview" style={{ minHeight: "600px" }} />}
             </div>
           </DialogPanel>
         </div>
