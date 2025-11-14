@@ -373,8 +373,8 @@ const PDFGenerator: React.FC = () => {
   };
 
   const invoiceItems: any = [
-    { quantity: 100, description: "Software development Services Performed by Vittorio Gambi", unitPrice: 30, total: 3000 },
-    { quantity: 200, description: "Software development Services Performed by Pavle Markovic", unitPrice: 35, total: 7000 },
+    { quantity: 100, description: "Software development hours by Vittorio Gambi", unitPrice: 30, total: 3000 },
+    { quantity: 200, description: "Software development hours by Pavle Markovic", unitPrice: 35, total: 7000 },
   ];
 
   return (
@@ -513,17 +513,38 @@ const PDFGenerator: React.FC = () => {
                     <div className=" text-base text-left leading-none">Plano, TX, 75024</div>
                     <div className=" text-base text-left leading-none">Gvozden.Mladenovic@kibernum.com</div>
                   </div>
-                  <div className="separator-30-mm" />
+                  <div className="separator-20-mm" />
                   <div className="flex-column pt-6 justify-center">
                     <h3 className="font-bold text-2xl text-center kind-of-green-color">Invoice to</h3>
                     <div className="text-base text-center">Software development services for October 2025 for the project STRD-0004</div>
                   </div>
-                  <div className="flex-column pt-6 justify-center">
-                    <h3 className="font-bold text-2xl text-center kind-of-green-color">Invoice to</h3>
-                    <div className="text-base text-center">Software development services for October 2025 for the project STRD-0004</div>
+                  <div className="grid grid-cols-4 pt-12">
+                    <div className="font-bold text-lg text-center kind-of-green-color">Quantity</div>
+                    <div className="font-bold text-lg text-center kind-of-green-color">Description</div>
+                    <div className="font-bold text-lg text-center kind-of-green-color">UnitPrice</div>
+                    <div className="font-bold text-lg text-center kind-of-green-color">Line Total</div>
+                    <div className="col-span-4 horizontal-line-separator mb-3 mt-1"></div>
+                    {invoiceItems.map((item: any, index: any) => (
+                      <React.Fragment key={index}>
+                        <div className="text-center align-middle font-medium">{item.quantity}</div>
+                        <div className="text-center text-sm">{item.description}</div>
+                        <div className="text-center font-medium">{item.unitPrice}</div>
+                        <div className="text-center font-medium">{item.total}</div>
+                        <div className="col-span-4 h-6"></div>
+                      </React.Fragment>
+                    ))}
                   </div>
-                  <div className="whitespace-pre-wrap" style={{ color: "#374151" }}>
-                    {content}
+                  <div className="separator-20-mm" />
+                  <div className="grid grid-cols-2 w-1/4 ml-auto gap-x-4 gap-y-1">
+                    <div className="text-right">Subtotal:</div>
+                    <div className="text-left">5,000</div>
+                    <div className="col-span-2 border-b border-dotted border-gray-400"></div>
+                    <div className="text-right">Sales Tax:</div>
+                    <div className="text-left">0%</div>
+                    <div className="col-span-2 border-b border-dotted border-gray-400"></div>
+                    <div className="text-right font-bold">Total</div>
+                    <div className="text-left font-bold">5,000</div>
+                    <div className="col-span-2 border-b border-dotted border-gray-400"></div>
                   </div>
                 </div>
               </div>

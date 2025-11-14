@@ -56,11 +56,16 @@
   color: #236c63;
 }
 
-.separator-30-mm {
-  height: 30mm;
+.separator-20-mm {
+  height: 20mm;
 }
 
 .horizontal-line-separator {
-    border-bottom-width: 3px;
+    border-bottom-width: 2px;
     border-bottom-color: black;
 }
+
+.horizontal-totals-separator {
+  border-bottom: black;
+}
+
