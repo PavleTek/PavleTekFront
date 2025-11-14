@@ -23,8 +23,8 @@
   position: absolute;
   top: 0mm; /* hide top edge overflow */
   left: -25%;
-  width: 220%;
-  height: 115mm;
+  width: 230%;
+  height: 125mm;
   background: linear-gradient(180deg, #75c8c7, #53b5ce);
   transform: rotate(-15deg);
   transform-origin: top left;
@@ -61,11 +61,27 @@
 }
 
 .horizontal-line-separator {
-    border-bottom-width: 2px;
-    border-bottom-color: black;
+  border-bottom-width: 2px;
+  border-bottom-color: black;
+  margin-bottom: 3mm;
+  padding-top: 1mm;
 }
 
-.horizontal-totals-separator {
-  border-bottom: black;
+.small-vertical-space {
+  height: 2mm;
 }
 
+.totals-horizontal-border {
+  border-bottom-style: dotted;
+  border-bottom-color: #99a1af;
+  border-bottom-width: 1px;
+}
+
+.invoice-logo {
+  position: absolute;
+  bottom: 15mm;
+  left: -5mm;
+  width: 70mm;
+  height: 70mm;
+  z-index: 2;
+}

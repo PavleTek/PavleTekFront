@@ -7,6 +7,7 @@ import { emailService } from "../services/emailService";
 import type { EmailSender, SendTestEmailRequest } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
 import ErrorBanner from "../components/ErrorBanner";
+import logoImage from "../assets/Transparent_Image_5.png";
 import "../assets/invoice.css";
 
 const PDFGenerator: React.FC = () => {
@@ -523,7 +524,8 @@ const PDFGenerator: React.FC = () => {
                     <div className="font-bold text-lg text-center kind-of-green-color">Description</div>
                     <div className="font-bold text-lg text-center kind-of-green-color">UnitPrice</div>
                     <div className="font-bold text-lg text-center kind-of-green-color">Line Total</div>
-                    <div className="col-span-4 horizontal-line-separator mb-3 mt-1"></div>
+                    <div className="col-span-4 small-vertical-space"></div>
+                    <div className="col-span-4 horizontal-line-separator"></div>
                     {invoiceItems.map((item: any, index: any) => (
                       <React.Fragment key={index}>
                         <div className="text-center align-middle font-medium">{item.quantity}</div>
@@ -538,15 +540,17 @@ const PDFGenerator: React.FC = () => {
                   <div className="grid grid-cols-2 w-1/4 ml-auto gap-x-4 gap-y-1">
                     <div className="text-right">Subtotal:</div>
                     <div className="text-left">5,000</div>
-                    <div className="col-span-2 border-b border-dotted border-gray-400"></div>
+                    <div className="col-span-2 totals-horizontal-border"></div>
                     <div className="text-right">Sales Tax:</div>
                     <div className="text-left">0%</div>
-                    <div className="col-span-2 border-b border-dotted border-gray-400"></div>
+                    <div className="col-span-2 totals-horizontal-border"></div>
                     <div className="text-right font-bold">Total</div>
                     <div className="text-left font-bold">5,000</div>
-                    <div className="col-span-2 border-b border-dotted border-gray-400"></div>
+                    <div className="col-span-2 totals-horizontal-border"></div>
                   </div>
                 </div>
+                {/* Logo in bottom left corner */}
+                <img src={logoImage} alt="Logo" className="invoice-logo" />
               </div>
             </div>
           </div>
