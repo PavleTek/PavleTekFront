@@ -1,0 +1,17 @@
+.pdf-page {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  background: #ffffff;
+  font-family: "Helvetica", sans-serif;
+  color: #222;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.pdf-content {
+  padding: 5mm;
+  position: relative;
+  color: black;
+  z-index: 1;
+}

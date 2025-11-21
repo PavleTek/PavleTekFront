@@ -2,20 +2,24 @@ import React, { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, EyeIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, EyeIcon, ArrowDownTrayIcon, EnvelopeIcon, PlusIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { emailService } from "../services/emailService";
 import type { SendTestEmailRequest } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
 import ErrorBanner from "../components/ErrorBanner";
 import EmailDialog from "../components/EmailDialog";
-import logoImage from "../assets/Transparent_Image_5.png";
+import PavletekInvoice, { type InvoiceItem } from "../assets/pdfTemplates/PavletekInvoice";
+import RegularInvoice from "../assets/pdfTemplates/RegularInvoice";
+import KibernumAS, { type KibernumASItem } from "../assets/pdfTemplates/KibernumAS";
 import "../assets/invoice.css";
+
+type TemplateType = "pavletek" | "kibernum" | "regular";
 
 const PDFGenerator: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [title, setTitle] = useState<string>("My Document");
-  const [content, setContent] = useState<string>("Enter your content here...");
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>("pavletek");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [isFormExpanded, setIsFormExpanded] = useState<boolean>(true);
 
   // Email functionality state
   const [emailDialogOpen, setEmailDialogOpen] = useState<boolean>(false);
@@ -27,6 +31,62 @@ const PDFGenerator: React.FC = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState<boolean>(false);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
 
+  // PavletekInvoice state
+  const [pavletekData, setPavletekData] = useState({
+    date: "28/10/2025",
+    invoiceNumber: "00042",
+    companyName: "PavleTek",
+    companyAddress: "7601 Churchill Way 1338",
+    companyCityStateZip: "Dallas, TX, 75251",
+    companyPhone: "+1 940 603 9449",
+    companyEmail: "Pavle@PavleTek.com",
+    invoiceToName: "Kibernum USA LLC",
+    invoiceToAddress: "5700 Granite Parkway STE 200",
+    invoiceToCityStateZip: "Plano, TX, 75024",
+    invoiceToEmail: "Gvozden.Mladenovic@kibernum.com",
+    description: "Software development services for October 2025 for the project STRD-0004",
+    items: [
+      { quantity: 100, description: "Software development hours by Vittorio Gambi", unitPrice: 30, total: 3000 },
+      { quantity: 200, description: "Software development hours by Pavle Markovic", unitPrice: 35, total: 7000 },
+    ] as InvoiceItem[],
+    salesTax: 0,
+  });
+
+  // RegularInvoice state (same as PavletekInvoice plus fromCompanyName)
+  const [regularData, setRegularData] = useState({
+    date: "28/10/2025",
+    invoiceNumber: "00042",
+    fromCompanyName: "PavleTek",
+    companyName: "PavleTek",
+    companyAddress: "7601 Churchill Way 1338",
+    companyCityStateZip: "Dallas, TX, 75251",
+    companyPhone: "+1 940 603 9449",
+    companyEmail: "Pavle@PavleTek.com",
+    invoiceToName: "Kibernum USA LLC",
+    invoiceToAddress: "5700 Granite Parkway STE 200",
+    invoiceToCityStateZip: "Plano, TX, 75024",
+    invoiceToEmail: "Gvozden.Mladenovic@kibernum.com",
+    description: "Software development services for October 2025 for the project STRD-0004",
+    items: [
+      { quantity: 100, description: "Software development hours by Vittorio Gambi", unitPrice: 30, total: 3000 },
+      { quantity: 200, description: "Software development hours by Pavle Markovic", unitPrice: 35, total: 7000 },
+    ] as InvoiceItem[],
+    salesTax: 0,
+  });
+
+  // KibernumAS state
+  const getCurrentDate = () => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0");
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const year = today.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const [kibernumData, setKibernumData] = useState({
+    date: getCurrentDate(),
+    items: [] as KibernumASItem[],
+  });
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -36,7 +96,6 @@ const PDFGenerator: React.FC = () => {
       }
     };
   }, [previewPdfUrl]);
-
 
   // Convert oklch colors to RGB for html2canvas compatibility
   const convertOklchToRgb = (element: HTMLElement) => {
@@ -106,8 +165,8 @@ const PDFGenerator: React.FC = () => {
     pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
-    // Add additional pages if content is longer than one page
-    while (heightLeft >= 0) {
+    // Add additional pages only if there's significant content remaining (more than 5mm)
+    while (heightLeft > 5) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
@@ -115,6 +174,19 @@ const PDFGenerator: React.FC = () => {
     }
 
     return pdf;
+  };
+
+  const getTemplateName = () => {
+    switch (selectedTemplate) {
+      case "pavletek":
+        return "PavletekInvoice";
+      case "regular":
+        return "RegularInvoice";
+      case "kibernum":
+        return "KibernumAS";
+      default:
+        return "document";
+    }
   };
 
   const generatePDF = async (forEmail: boolean = false) => {
@@ -139,7 +211,7 @@ const PDFGenerator: React.FC = () => {
         setEmailDialogOpen(true);
       } else {
         // Save the PDF
-        pdf.save(`${title || "document"}.pdf`);
+        pdf.save(`${getTemplateName()}.pdf`);
         setSuccess("PDF generated successfully!");
       }
     } catch (error) {
@@ -196,7 +268,7 @@ const PDFGenerator: React.FC = () => {
     if (previewPdfUrl) {
       const link = document.createElement("a");
       link.href = previewPdfUrl;
-      link.download = `${title || "document"}.pdf`;
+      link.download = `${getTemplateName()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -210,7 +282,7 @@ const PDFGenerator: React.FC = () => {
     }
 
     // Convert blob to File for attachment
-    const pdfFile = new File([generatedPdfBlob], `${title || "document"}.pdf`, {
+    const pdfFile = new File([generatedPdfBlob], `${getTemplateName()}.pdf`, {
       type: "application/pdf",
     });
 
@@ -229,184 +301,585 @@ const PDFGenerator: React.FC = () => {
     setGeneratedPdfBlob(null);
   };
 
-  const invoiceItems: any = [
-    { quantity: 100, description: "Software development hours by Vittorio Gambi", unitPrice: 30, total: 3000 },
-    { quantity: 200, description: "Software development hours by Pavle Markovic", unitPrice: 35, total: 7000 },
-  ];
+  // Handle file upload for KibernumAS items
+  const handleImageUpload = (index: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const newItems = [...kibernumData.items];
+      if (newItems[index]) {
+        newItems[index] = { ...newItems[index], image: dataUrl };
+      } else {
+        newItems[index] = { executedBy: "", hours: 0, image: dataUrl };
+      }
+      setKibernumData({ ...kibernumData, items: newItems });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Add new KibernumAS item
+  const addKibernumItem = () => {
+    setKibernumData({
+      ...kibernumData,
+      items: [...kibernumData.items, { executedBy: "", hours: 0, image: "" }],
+    });
+  };
+
+  // Remove KibernumAS item
+  const removeKibernumItem = (index: number) => {
+    setKibernumData({
+      ...kibernumData,
+      items: kibernumData.items.filter((_, i) => i !== index),
+    });
+  };
+
+  // Render template component based on selection
+  const renderTemplate = () => {
+    switch (selectedTemplate) {
+      case "pavletek":
+        return <PavletekInvoice ref={contentRef} {...pavletekData} />;
+      case "regular":
+        return <RegularInvoice ref={contentRef} {...regularData} />;
+      case "kibernum":
+        return <KibernumAS ref={contentRef} {...kibernumData} />;
+      default:
+        return null;
+    }
+  };
+
+  // Render form inputs based on selected template
+  const renderFormInputs = () => {
+    switch (selectedTemplate) {
+      case "pavletek":
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input
+                  type="text"
+                  value={pavletekData.date}
+                  onChange={(e) => setPavletekData({ ...pavletekData, date: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Number</label>
+                <input
+                  type="text"
+                  value={pavletekData.invoiceNumber}
+                  onChange={(e) => setPavletekData({ ...pavletekData, invoiceNumber: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+              <input
+                type="text"
+                value={pavletekData.companyName}
+                onChange={(e) => setPavletekData({ ...pavletekData, companyName: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Address</label>
+              <input
+                type="text"
+                value={pavletekData.companyAddress}
+                onChange={(e) => setPavletekData({ ...pavletekData, companyAddress: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">City, State, ZIP</label>
+              <input
+                type="text"
+                value={pavletekData.companyCityStateZip}
+                onChange={(e) => setPavletekData({ ...pavletekData, companyCityStateZip: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <input
+                  type="text"
+                  value={pavletekData.companyPhone}
+                  onChange={(e) => setPavletekData({ ...pavletekData, companyPhone: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={pavletekData.companyEmail}
+                  onChange={(e) => setPavletekData({ ...pavletekData, companyEmail: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Name</label>
+              <input
+                type="text"
+                value={pavletekData.invoiceToName}
+                onChange={(e) => setPavletekData({ ...pavletekData, invoiceToName: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Address</label>
+              <input
+                type="text"
+                value={pavletekData.invoiceToAddress}
+                onChange={(e) => setPavletekData({ ...pavletekData, invoiceToAddress: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To City, State, ZIP</label>
+              <input
+                type="text"
+                value={pavletekData.invoiceToCityStateZip}
+                onChange={(e) => setPavletekData({ ...pavletekData, invoiceToCityStateZip: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Email</label>
+              <input
+                type="email"
+                value={pavletekData.invoiceToEmail}
+                onChange={(e) => setPavletekData({ ...pavletekData, invoiceToEmail: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={pavletekData.description}
+                onChange={(e) => setPavletekData({ ...pavletekData, description: e.target.value })}
+                rows={3}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sales Tax (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={pavletekData.salesTax * 100}
+                onChange={(e) => setPavletekData({ ...pavletekData, salesTax: parseFloat(e.target.value) / 100 })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
+              {pavletekData.items.map((item, index) => (
+                <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="grid grid-cols-4 gap-4 mb-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const newItems = [...pavletekData.items];
+                          const quantity = parseInt(e.target.value) || 0;
+                          newItems[index] = { ...item, quantity, total: quantity * item.unitPrice };
+                          setPavletekData({ ...pavletekData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => {
+                          const newItems = [...pavletekData.items];
+                          newItems[index] = { ...item, description: e.target.value };
+                          setPavletekData({ ...pavletekData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Unit Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unitPrice}
+                        onChange={(e) => {
+                          const newItems = [...pavletekData.items];
+                          const unitPrice = parseFloat(e.target.value) || 0;
+                          newItems[index] = { ...item, unitPrice, total: item.quantity * unitPrice };
+                          setPavletekData({ ...pavletekData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600">Total: {item.total}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case "regular":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">From Company Name</label>
+              <input
+                type="text"
+                value={regularData.fromCompanyName}
+                onChange={(e) => setRegularData({ ...regularData, fromCompanyName: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input
+                  type="text"
+                  value={regularData.date}
+                  onChange={(e) => setRegularData({ ...regularData, date: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Number</label>
+                <input
+                  type="text"
+                  value={regularData.invoiceNumber}
+                  onChange={(e) => setRegularData({ ...regularData, invoiceNumber: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+              <input
+                type="text"
+                value={regularData.companyName}
+                onChange={(e) => setRegularData({ ...regularData, companyName: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Address</label>
+              <input
+                type="text"
+                value={regularData.companyAddress}
+                onChange={(e) => setRegularData({ ...regularData, companyAddress: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">City, State, ZIP</label>
+              <input
+                type="text"
+                value={regularData.companyCityStateZip}
+                onChange={(e) => setRegularData({ ...regularData, companyCityStateZip: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <input
+                  type="text"
+                  value={regularData.companyPhone}
+                  onChange={(e) => setRegularData({ ...regularData, companyPhone: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={regularData.companyEmail}
+                  onChange={(e) => setRegularData({ ...regularData, companyEmail: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Name</label>
+              <input
+                type="text"
+                value={regularData.invoiceToName}
+                onChange={(e) => setRegularData({ ...regularData, invoiceToName: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Address</label>
+              <input
+                type="text"
+                value={regularData.invoiceToAddress}
+                onChange={(e) => setRegularData({ ...regularData, invoiceToAddress: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To City, State, ZIP</label>
+              <input
+                type="text"
+                value={regularData.invoiceToCityStateZip}
+                onChange={(e) => setRegularData({ ...regularData, invoiceToCityStateZip: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Email</label>
+              <input
+                type="email"
+                value={regularData.invoiceToEmail}
+                onChange={(e) => setRegularData({ ...regularData, invoiceToEmail: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={regularData.description}
+                onChange={(e) => setRegularData({ ...regularData, description: e.target.value })}
+                rows={3}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sales Tax (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={regularData.salesTax * 100}
+                onChange={(e) => setRegularData({ ...regularData, salesTax: parseFloat(e.target.value) / 100 })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
+              {regularData.items.map((item, index) => (
+                <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="grid grid-cols-4 gap-4 mb-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const newItems = [...regularData.items];
+                          const quantity = parseInt(e.target.value) || 0;
+                          newItems[index] = { ...item, quantity, total: quantity * item.unitPrice };
+                          setRegularData({ ...regularData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => {
+                          const newItems = [...regularData.items];
+                          newItems[index] = { ...item, description: e.target.value };
+                          setRegularData({ ...regularData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Unit Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unitPrice}
+                        onChange={(e) => {
+                          const newItems = [...regularData.items];
+                          const unitPrice = parseFloat(e.target.value) || 0;
+                          newItems[index] = { ...item, unitPrice, total: item.quantity * unitPrice };
+                          setRegularData({ ...regularData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600">Total: {item.total}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case "kibernum":
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+              <input
+                type="text"
+                value={kibernumData.date}
+                onChange={(e) => setKibernumData({ ...kibernumData, date: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Items</label>
+                <button
+                  type="button"
+                  onClick={addKibernumItem}
+                  className="flex items-center gap-1 px-3 py-1 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+              {kibernumData.items.map((item, index) => (
+                <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4 mb-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Executed By</label>
+                      <input
+                        type="text"
+                        value={item.executedBy}
+                        onChange={(e) => {
+                          const newItems = [...kibernumData.items];
+                          newItems[index] = { ...item, executedBy: e.target.value };
+                          setKibernumData({ ...kibernumData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Hours</label>
+                      <input
+                        type="number"
+                        value={item.hours}
+                        onChange={(e) => {
+                          const newItems = [...kibernumData.items];
+                          newItems[index] = { ...item, hours: parseFloat(e.target.value) || 0 };
+                          setKibernumData({ ...kibernumData, items: newItems });
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Image</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleImageUpload(index, file);
+                        }
+                      }}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    />
+                    {item.image && (
+                      <img src={item.image} alt={`${item.executedBy}`} className="mt-2 w-32 h-32 object-cover rounded" />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeKibernumItem(index)}
+                    className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       {success && <SuccessBanner message={success} onDismiss={() => setSuccess(null)} />}
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">PDF Generator</h1>
-        <p className="mt-1 text-sm text-gray-600">Create PDF documents from your content using html2canvas and jsPDF</p>
+      {/* Header with title and buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">PDF Generator</h1>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={previewPDF}
+            disabled={isGenerating}
+            className="flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <EyeIcon className="h-5 w-5" />
+            {isGenerating ? "Generating..." : "Preview"}
+          </button>
+          <button
+            onClick={() => generatePDF(false)}
+            disabled={isGenerating}
+            className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            {isGenerating ? "Generating..." : "Download"}
+          </button>
+          <button
+            onClick={() => generatePDF(true)}
+            disabled={isGenerating}
+            className="flex items-center justify-center gap-2 bg-secondary-600 text-white px-4 py-2 rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <EnvelopeIcon className="h-5 w-5" />
+            {isGenerating ? "Generating..." : "Email"}
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Input Section */}
-        <div className="space-y-4">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Settings</h2>
+      {/* Template Selection */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Template</label>
+        <select
+          value={selectedTemplate}
+          onChange={(e) => setSelectedTemplate(e.target.value as TemplateType)}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          <option value="pavletek">Pavletek Invoice</option>
+          <option value="regular">Regular Invoice</option>
+          <option value="kibernum">Kibernum AS</option>
+        </select>
+      </div>
 
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                  Document Title
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter document title"
-                />
-              </div>
+      {/* Form Inputs */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <button
+          type="button"
+          onClick={() => setIsFormExpanded(!isFormExpanded)}
+          className="w-full flex items-center justify-between mb-4 text-left"
+        >
+          <h2 className="text-lg font-semibold text-gray-900">Template Settings</h2>
+          {isFormExpanded ? (
+            <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+          ) : (
+            <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+          )}
+        </button>
+        {isFormExpanded && <div>{renderFormInputs()}</div>}
+      </div>
 
-              <div>
-                <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-                  Content
-                </label>
-                <textarea
-                  id="content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={10}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  placeholder="Enter your content here..."
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex gap-3">
-                  <button
-                    onClick={previewPDF}
-                    disabled={isGenerating}
-                    className="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <EyeIcon className="h-5 w-5" />
-                    {isGenerating ? "Generating..." : "Preview PDF"}
-                  </button>
-                  <button
-                    onClick={() => generatePDF(false)}
-                    disabled={isGenerating}
-                    className="flex-1 flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ArrowDownTrayIcon className="h-5 w-5" />
-                    {isGenerating ? "Generating..." : "Download PDF"}
-                  </button>
-                </div>
-                <button
-                  onClick={() => generatePDF(true)}
-                  disabled={isGenerating}
-                  className="w-full bg-secondary-600 text-white px-4 py-2 rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isGenerating ? "Generating..." : "Generate & Email PDF"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Preview Section */}
-        <div className="space-y-4">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
-
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 max-h-[600px] overflow-auto">
-              <div ref={contentRef} data-pdf-content className="invoice-page rounded shadow-sm">
-                {/* Background layers */}
-                <div className="top-background-line"></div>
-                <div className="bottom-background-line"></div>
-
-                {/* Actual content (above backgrounds) */}
-                <div className="invoice-content flex-column">
-                  <h1 className="text-3xl font-bold mb-8" style={{ color: "#000000ff" }}>
-                    INVOICE
-                  </h1>
-                  {/* <div className="flex justify-between">
-                    <div className="flex-column">
-                      <div className="font-bold text-lg">DATE</div>
-                      <div className=" text-base">28/10/2025</div>
-                    </div>
-                    <div className="flex-column">
-                      <div className="font-bold text-lg">Invoice Number</div>
-                      <div className="font-semibold text-base text-center">00042</div>
-                    </div>
-                    <div className="flex-column">
-                      <div className="font-bold text-lg text-right">PavleTek</div>
-                      <div className=" text-base text-right leading-none">7601 Churchill Way 1338</div>
-                      <div className=" text-base text-right leading-none">Dallas, TX, 75251</div>
-                      <div className=" text-base text-right leading-none">+1 940 603 9449</div>
-                      <div className=" text-base text-right leading-none">Pavle@PavleTek.com</div>
-                    </div>
-                  </div> */}
-                  <div className="grid grid-cols-3">
-                    <div className="flex-column justify-self-start">
-                      <div className="font-bold text-lgl">DATE</div>
-                      <div className=" text-base">28/10/2025</div>
-                    </div>
-                    <div className="flex-column justify-self-center">
-                      <div className="font-bold text-lg">Invoice Number</div>
-                      <div className="font-semibold text-base text-center">00042</div>
-                    </div>
-                    <div className="flex-column justify-self-right">
-                      <div className="font-bold text-lg text-right">PavleTek</div>
-                      <div className=" text-base text-right leading-none">7601 Churchill Way 1338</div>
-                      <div className=" text-base text-right leading-none">Dallas, TX, 75251</div>
-                      <div className=" text-base text-right leading-none">+1 940 603 9449</div>
-                      <div className=" text-base text-right leading-none">Pavle@PavleTek.com</div>
-                    </div>
-                  </div>
-                  <div className="flex-column pt-6">
-                    <div className="font-bold text-lg text-left">Invoice to</div>
-                    <div className=" text-base text-left leading-none">Kibernum USA LLC</div>
-                    <div className=" text-base text-left leading-none">5700 Granite Parkway STE 200</div>
-                    <div className=" text-base text-left leading-none">Plano, TX, 75024</div>
-                    <div className=" text-base text-left leading-none">Gvozden.Mladenovic@kibernum.com</div>
-                  </div>
-                  <div className="separator-20-mm" />
-                  <div className="flex-column pt-6 justify-center">
-                    <h3 className="font-bold text-2xl text-center kind-of-green-color">Invoice to</h3>
-                    <div className="text-base text-center">Software development services for October 2025 for the project STRD-0004</div>
-                  </div>
-                  <div className="grid grid-cols-4 pt-12">
-                    <div className="font-bold text-lg text-center kind-of-green-color">Quantity</div>
-                    <div className="font-bold text-lg text-center kind-of-green-color">Description</div>
-                    <div className="font-bold text-lg text-center kind-of-green-color">UnitPrice</div>
-                    <div className="font-bold text-lg text-center kind-of-green-color">Line Total</div>
-                    <div className="col-span-4 small-vertical-space"></div>
-                    <div className="col-span-4 horizontal-line-separator"></div>
-                    {invoiceItems.map((item: any, index: any) => (
-                      <React.Fragment key={index}>
-                        <div className="text-center align-middle font-medium">{item.quantity}</div>
-                        <div className="text-center text-sm">{item.description}</div>
-                        <div className="text-center font-medium">{item.unitPrice}</div>
-                        <div className="text-center font-medium">{item.total}</div>
-                        <div className="col-span-4 h-6"></div>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                  <div className="separator-20-mm" />
-                  <div className="grid grid-cols-2 w-1/4 ml-auto gap-x-4 gap-y-1">
-                    <div className="text-right">Subtotal:</div>
-                    <div className="text-left">5,000</div>
-                    <div className="col-span-2 totals-horizontal-border"></div>
-                    <div className="text-right">Sales Tax:</div>
-                    <div className="text-left">0%</div>
-                    <div className="col-span-2 totals-horizontal-border"></div>
-                    <div className="text-right font-bold">Total</div>
-                    <div className="text-left font-bold">5,000</div>
-                    <div className="col-span-2 totals-horizontal-border"></div>
-                  </div>
-                </div>
-                {/* Logo in bottom left corner */}
-                <img src={logoImage} alt="Logo" className="invoice-logo" />
-              </div>
-            </div>
-          </div>
+      {/* Preview Section - Full Width */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          {renderTemplate()}
         </div>
       </div>
 
@@ -416,8 +889,8 @@ const PDFGenerator: React.FC = () => {
         onClose={closeEmailDialog}
         onSend={handleSendEmail}
         initialData={{
-          subject: title || "PDF Document",
-          content: `Please find attached the PDF document: ${title || "document"}.pdf`,
+          subject: `${getTemplateName()} Document`,
+          content: `Please find attached the PDF document: ${getTemplateName()}.pdf`,
         }}
         title="Send PDF via Email"
       />
@@ -428,7 +901,7 @@ const PDFGenerator: React.FC = () => {
         <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
           <DialogPanel className="max-w-6xl w-full bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <DialogTitle className="text-lg font-semibold text-gray-900">PDF Preview - {title || "document"}</DialogTitle>
+              <DialogTitle className="text-lg font-semibold text-gray-900">PDF Preview - {getTemplateName()}</DialogTitle>
               <div className="flex items-center gap-3">
                 <button
                   onClick={downloadFromPreview}
