@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { contactService } from "../services/contactService";
 import { companyService } from "../services/companyService";
 import { bankAccountService } from "../services/bankAccountService";
 import { currencyService } from "../services/currencyService";
 import { languageService } from "../services/languageService";
 import { countryService } from "../services/countryService";
-import type { Contact, Company, BankAccount, Currency, Language, Country, CreateContactRequest, UpdateContactRequest, CreateCompanyRequest, UpdateCompanyRequest, CreateBankAccountRequest, UpdateBankAccountRequest } from "../types";
+import type { Contact, Company, BankAccount, Currency, Language, Country, CreateContactRequest, UpdateContactRequest, CreateCompanyRequest, UpdateCompanyRequest, CreateBankAccountRequest, UpdateBankAccountRequest, Address } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
 import ErrorBanner from "../components/ErrorBanner";
 import ConfirmationDialog from "../components/ConfirmationDialog";
@@ -43,7 +43,13 @@ const ContactsAndCompanies: React.FC = () => {
     notes: "",
     taxID: "",
     roleInCompany: "",
-    address: null,
+    address: {
+      addressLine1: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+    },
     countryId: undefined,
     languageId: undefined,
     currencyId: undefined,
@@ -58,7 +64,13 @@ const ContactsAndCompanies: React.FC = () => {
     website: "",
     businessType: "",
     color: "#7ad9c5",
-    address: null,
+    address: {
+      addressLine1: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+    },
     country: undefined,
     language: undefined,
     currencyId: undefined,
@@ -84,6 +96,10 @@ const ContactsAndCompanies: React.FC = () => {
   });
   
   const [editingId, setEditingId] = useState<number | null>(null);
+  
+  // Address section expanded states
+  const [contactAddressExpanded, setContactAddressExpanded] = useState(false);
+  const [companyAddressExpanded, setCompanyAddressExpanded] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -124,6 +140,8 @@ const ContactsAndCompanies: React.FC = () => {
   const handleCreate = () => {
     setIsEditMode(false);
     setEditingId(null);
+    setContactAddressExpanded(true);  // Open by default when creating
+    setCompanyAddressExpanded(true);  // Open by default when creating
     if (activeTab === "contacts") {
       setContactForm({
         firstName: "",
@@ -135,7 +153,13 @@ const ContactsAndCompanies: React.FC = () => {
         notes: "",
         taxID: "",
         roleInCompany: "",
-        address: null,
+        address: {
+          addressLine1: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
+        },
         countryId: undefined,
         languageId: undefined,
         currencyId: undefined,
@@ -150,7 +174,13 @@ const ContactsAndCompanies: React.FC = () => {
         website: "",
         businessType: "",
         color: "#7ad9c5",
-        address: null,
+        address: {
+          addressLine1: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
+        },
         country: undefined,
         language: undefined,
         currencyId: undefined,
@@ -181,6 +211,8 @@ const ContactsAndCompanies: React.FC = () => {
   const handleEdit = (item: Contact | Company | BankAccount) => {
     setIsEditMode(true);
     setEditingId(item.id);
+    setContactAddressExpanded(false);  // Closed by default when editing
+    setCompanyAddressExpanded(false);  // Closed by default when editing
     if (activeTab === "contacts") {
       const contact = item as Contact;
       // Find country and language IDs from the names
@@ -190,6 +222,29 @@ const ContactsAndCompanies: React.FC = () => {
       const languageId = contact.language 
         ? languages.find(l => l.name === contact.language)?.id 
         : undefined;
+      
+      // Parse address - handle both structured Address and legacy JSON formats
+      let parsedAddress: Address | null = null;
+      if (contact.address) {
+        if (typeof contact.address === 'object' && contact.address !== null) {
+          parsedAddress = {
+            addressLine1: (contact.address as any).addressLine1 || "",
+            city: (contact.address as any).city || "",
+            state: (contact.address as any).state || "",
+            zipCode: (contact.address as any).zipCode || "",
+            country: (contact.address as any).country || "",
+          };
+        }
+      }
+      if (!parsedAddress) {
+        parsedAddress = {
+          addressLine1: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
+        };
+      }
       
       setContactForm({
         firstName: contact.firstName || "",
@@ -201,7 +256,7 @@ const ContactsAndCompanies: React.FC = () => {
         notes: contact.notes || "",
         taxID: contact.taxID || "",
         roleInCompany: contact.roleInCompany || "",
-        address: contact.address || null,
+        address: parsedAddress,
         countryId: countryId,
         languageId: languageId,
         currencyId: contact.currencyId || undefined,
@@ -210,6 +265,30 @@ const ContactsAndCompanies: React.FC = () => {
       });
     } else if (activeTab === "companies") {
       const company = item as Company;
+      
+      // Parse address - handle both structured Address and legacy JSON formats
+      let parsedAddress: Address | null = null;
+      if (company.address) {
+        if (typeof company.address === 'object' && company.address !== null) {
+          parsedAddress = {
+            addressLine1: (company.address as any).addressLine1 || "",
+            city: (company.address as any).city || "",
+            state: (company.address as any).state || "",
+            zipCode: (company.address as any).zipCode || "",
+            country: (company.address as any).country || "",
+          };
+        }
+      }
+      if (!parsedAddress) {
+        parsedAddress = {
+          addressLine1: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
+        };
+      }
+      
       setCompanyForm({
         displayName: company.displayName || "",
         legalName: company.legalName || "",
@@ -217,7 +296,7 @@ const ContactsAndCompanies: React.FC = () => {
         website: company.website || "",
         businessType: company.businessType || "",
         color: company.color || "#7ad9c5",
-        address: company.address || null,
+        address: parsedAddress,
         country: company.country || undefined,
         language: company.language || undefined,
         currencyId: company.currencyId || undefined,
@@ -292,8 +371,33 @@ const ContactsAndCompanies: React.FC = () => {
     try {
       setError(null);
       if (activeTab === "contacts") {
+        // Validate and serialize address
+        let addressData: Address | null = null;
+        if (contactForm.address) {
+          const addressLine1 = contactForm.address.addressLine1?.trim() || "";
+          if (addressLine1.length === 0) {
+            // If address section is expanded but addressLine1 is empty, show error
+            if (contactAddressExpanded) {
+              setError("Address Line 1 is required");
+              return;
+            }
+            // If not expanded, set to null
+            addressData = null;
+          } else {
+            // Build address object with only non-empty fields
+            addressData = {
+              addressLine1: addressLine1,
+              ...(contactForm.address.city?.trim() && { city: contactForm.address.city.trim() }),
+              ...(contactForm.address.state?.trim() && { state: contactForm.address.state.trim() }),
+              ...(contactForm.address.zipCode?.trim() && { zipCode: contactForm.address.zipCode.trim() }),
+              ...(contactForm.address.country?.trim() && { country: contactForm.address.country.trim() }),
+            };
+          }
+        }
+        
         const data: CreateContactRequest | UpdateContactRequest = {
           ...contactForm,
+          address: addressData,
           countryId: contactForm.countryId || undefined,
           languageId: contactForm.languageId || undefined,
           currencyId: contactForm.currencyId || undefined,
@@ -310,8 +414,33 @@ const ContactsAndCompanies: React.FC = () => {
           setSuccess("Contact created successfully");
         }
       } else if (activeTab === "companies") {
+        // Validate and serialize address
+        let addressData: Address | null = null;
+        if (companyForm.address) {
+          const addressLine1 = companyForm.address.addressLine1?.trim() || "";
+          if (addressLine1.length === 0) {
+            // If address section is expanded but addressLine1 is empty, show error
+            if (companyAddressExpanded) {
+              setError("Address Line 1 is required");
+              return;
+            }
+            // If not expanded, set to null
+            addressData = null;
+          } else {
+            // Build address object with only non-empty fields
+            addressData = {
+              addressLine1: addressLine1,
+              ...(companyForm.address.city?.trim() && { city: companyForm.address.city.trim() }),
+              ...(companyForm.address.state?.trim() && { state: companyForm.address.state.trim() }),
+              ...(companyForm.address.zipCode?.trim() && { zipCode: companyForm.address.zipCode.trim() }),
+              ...(companyForm.address.country?.trim() && { country: companyForm.address.country.trim() }),
+            };
+          }
+        }
+        
         const data: CreateCompanyRequest | UpdateCompanyRequest = {
           ...companyForm,
+          address: addressData,
           country: companyForm.country || undefined,
           language: companyForm.language || undefined,
           currencyId: companyForm.currencyId || undefined,
@@ -755,29 +884,150 @@ const ContactsAndCompanies: React.FC = () => {
           />
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Default Bank Account</label>
-        <select
-          value={contactForm.defaultBankAccountId || ""}
-          onChange={(e) => setContactForm({ ...contactForm, defaultBankAccountId: e.target.value ? parseInt(e.target.value) : undefined })}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-        >
-          <option value="">Select Bank Account</option>
-          {bankAccounts.filter((ba) => isEditMode && editingId ? ba.ownerContactId === editingId : false).map((bankAccount) => (
-            <option key={bankAccount.id} value={bankAccount.id}>
-              {bankAccount.bankName} - {bankAccount.accountNumber}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Default Bank Account</label>
+          <select
+            value={contactForm.defaultBankAccountId || ""}
+            onChange={(e) => setContactForm({ ...contactForm, defaultBankAccountId: e.target.value ? parseInt(e.target.value) : undefined })}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          >
+            <option value="">Select Bank Account</option>
+            {bankAccounts.filter((ba) => isEditMode && editingId ? ba.ownerContactId === editingId : false).map((bankAccount) => (
+              <option key={bankAccount.id} value={bankAccount.id}>
+                {bankAccount.bankName} - {bankAccount.accountNumber}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+          <input
+            type="color"
+            value={contactForm.color}
+            onChange={(e) => setContactForm({ ...contactForm, color: e.target.value })}
+            className="w-full h-10 rounded-md border border-gray-300"
+          />
+        </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
-        <input
-          type="color"
-          value={contactForm.color}
-          onChange={(e) => setContactForm({ ...contactForm, color: e.target.value })}
-          className="w-full h-10 rounded-md border border-gray-300"
-        />
+      
+      {/* Address Section */}
+      <div className="border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          onClick={() => setContactAddressExpanded(!contactAddressExpanded)}
+          className="flex items-center justify-between w-full text-left mb-2"
+        >
+          <label className="block text-sm font-medium text-gray-700">Address</label>
+          <ChevronDownIcon className={`h-5 w-5 text-gray-500 transform transition-transform ${contactAddressExpanded ? 'rotate-180' : ''}`} />
+        </button>
+        {contactAddressExpanded && (
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address Line 1 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={contactForm.address?.addressLine1 || ""}
+                onChange={(e) => setContactForm({
+                  ...contactForm,
+                  address: {
+                    addressLine1: e.target.value,
+                    city: contactForm.address?.city || "",
+                    state: contactForm.address?.state || "",
+                    zipCode: contactForm.address?.zipCode || "",
+                    country: contactForm.address?.country || "",
+                  }
+                })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <input
+                  type="text"
+                  value={contactForm.address?.city || ""}
+                  onChange={(e) => setContactForm({
+                    ...contactForm,
+                    address: {
+                      addressLine1: contactForm.address?.addressLine1 || "",
+                      city: e.target.value,
+                      state: contactForm.address?.state || "",
+                      zipCode: contactForm.address?.zipCode || "",
+                      country: contactForm.address?.country || "",
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <input
+                  type="text"
+                  value={contactForm.address?.state || ""}
+                  onChange={(e) => setContactForm({
+                    ...contactForm,
+                    address: {
+                      addressLine1: contactForm.address?.addressLine1 || "",
+                      city: contactForm.address?.city || "",
+                      state: e.target.value,
+                      zipCode: contactForm.address?.zipCode || "",
+                      country: contactForm.address?.country || "",
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
+                <input
+                  type="text"
+                  value={contactForm.address?.zipCode || ""}
+                  onChange={(e) => setContactForm({
+                    ...contactForm,
+                    address: {
+                      addressLine1: contactForm.address?.addressLine1 || "",
+                      city: contactForm.address?.city || "",
+                      state: contactForm.address?.state || "",
+                      zipCode: e.target.value,
+                      country: contactForm.address?.country || "",
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                <select
+                  value={contactForm.address?.country || ""}
+                  onChange={(e) => setContactForm({
+                    ...contactForm,
+                    address: {
+                      addressLine1: contactForm.address?.addressLine1 || "",
+                      city: contactForm.address?.city || "",
+                      state: contactForm.address?.state || "",
+                      zipCode: contactForm.address?.zipCode || "",
+                      country: e.target.value || undefined,
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="">Select Country</option>
+                  {countries.map((country) => (
+                    <option key={country.id} value={country.name}>
+                      {country.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
@@ -898,29 +1148,150 @@ const ContactsAndCompanies: React.FC = () => {
           </select>
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Default Contact</label>
-        <select
-          value={companyForm.defaultContactId || ""}
-          onChange={(e) => setCompanyForm({ ...companyForm, defaultContactId: e.target.value ? parseInt(e.target.value) : undefined })}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-        >
-          <option value="">Select Contact</option>
-          {contacts.filter((contact) => isEditMode && editingId ? contact.associatedCompanyId === editingId : false).map((contact) => (
-            <option key={contact.id} value={contact.id}>
-              {`${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Default Contact</label>
+          <select
+            value={companyForm.defaultContactId || ""}
+            onChange={(e) => setCompanyForm({ ...companyForm, defaultContactId: e.target.value ? parseInt(e.target.value) : undefined })}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          >
+            <option value="">Select Contact</option>
+            {contacts.filter((contact) => isEditMode && editingId ? contact.associatedCompanyId === editingId : false).map((contact) => (
+              <option key={contact.id} value={contact.id}>
+                {`${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+          <input
+            type="color"
+            value={companyForm.color}
+            onChange={(e) => setCompanyForm({ ...companyForm, color: e.target.value })}
+            className="w-full h-10 rounded-md border border-gray-300"
+          />
+        </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
-        <input
-          type="color"
-          value={companyForm.color}
-          onChange={(e) => setCompanyForm({ ...companyForm, color: e.target.value })}
-          className="w-full h-10 rounded-md border border-gray-300"
-        />
+      
+      {/* Address Section */}
+      <div className="border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          onClick={() => setCompanyAddressExpanded(!companyAddressExpanded)}
+          className="flex items-center justify-between w-full text-left mb-2"
+        >
+          <label className="block text-sm font-medium text-gray-700">Address</label>
+          <ChevronDownIcon className={`h-5 w-5 text-gray-500 transform transition-transform ${companyAddressExpanded ? 'rotate-180' : ''}`} />
+        </button>
+        {companyAddressExpanded && (
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address Line 1 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={companyForm.address?.addressLine1 || ""}
+                onChange={(e) => setCompanyForm({
+                  ...companyForm,
+                  address: {
+                    addressLine1: e.target.value,
+                    city: companyForm.address?.city || "",
+                    state: companyForm.address?.state || "",
+                    zipCode: companyForm.address?.zipCode || "",
+                    country: companyForm.address?.country || "",
+                  }
+                })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <input
+                  type="text"
+                  value={companyForm.address?.city || ""}
+                  onChange={(e) => setCompanyForm({
+                    ...companyForm,
+                    address: {
+                      addressLine1: companyForm.address?.addressLine1 || "",
+                      city: e.target.value,
+                      state: companyForm.address?.state || "",
+                      zipCode: companyForm.address?.zipCode || "",
+                      country: companyForm.address?.country || "",
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <input
+                  type="text"
+                  value={companyForm.address?.state || ""}
+                  onChange={(e) => setCompanyForm({
+                    ...companyForm,
+                    address: {
+                      addressLine1: companyForm.address?.addressLine1 || "",
+                      city: companyForm.address?.city || "",
+                      state: e.target.value,
+                      zipCode: companyForm.address?.zipCode || "",
+                      country: companyForm.address?.country || "",
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
+                <input
+                  type="text"
+                  value={companyForm.address?.zipCode || ""}
+                  onChange={(e) => setCompanyForm({
+                    ...companyForm,
+                    address: {
+                      addressLine1: companyForm.address?.addressLine1 || "",
+                      city: companyForm.address?.city || "",
+                      state: companyForm.address?.state || "",
+                      zipCode: e.target.value,
+                      country: companyForm.address?.country || "",
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                <select
+                  value={companyForm.address?.country || ""}
+                  onChange={(e) => setCompanyForm({
+                    ...companyForm,
+                    address: {
+                      addressLine1: companyForm.address?.addressLine1 || "",
+                      city: companyForm.address?.city || "",
+                      state: companyForm.address?.state || "",
+                      zipCode: companyForm.address?.zipCode || "",
+                      country: e.target.value || undefined,
+                    }
+                  })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="">Select Country</option>
+                  {countries.map((country) => (
+                    <option key={country.id} value={country.name}>
+                      {country.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex gap-3 pt-4">
         <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">

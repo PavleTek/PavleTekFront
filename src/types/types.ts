@@ -222,6 +222,14 @@ export interface UpdateCountryRequest {
   name: string;
 }
 
+export interface Address {
+  addressLine1: string;  // Mandatory
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+}
+
 export interface Contact {
   id: number;
   firstName?: string | null;
@@ -233,7 +241,7 @@ export interface Contact {
   notes?: string | null;
   taxID?: string | null;
   roleInCompany?: string | null;
-  address?: any | null;
+  address?: Address | null;
   country?: string | null;
   language?: string | null;
   createdAt: string;
@@ -293,7 +301,7 @@ export interface Company {
   website?: string | null;
   businessType?: string | null;
   color?: string;
-  address?: any | null;
+  address?: Address | null;
   country?: string | null;
   language?: string | null;
   createdAt: string;
