@@ -9,7 +9,11 @@ import Accounting from "./pages/Accounting";
 import UserManagement from "./pages/UserManagement";
 import AppSettings from "./pages/AppSettings";
 import Profile from "./pages/Profile";
+import Email from "./pages/Email";
+import Invoicing from "./pages/Invoicing";
 import PDFGenerator from "./pages/PDFGenerator";
+import ContactsAndCompanies from "./pages/ContactsAndCompanies";
+import Mantenedores from "./pages/mantenedores";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,6 +75,46 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <Profile />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mantenedores"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Mantenedores />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/email"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Email />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoicing"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Invoicing />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contacts-and-companies"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <ContactsAndCompanies />
             </DashboardLayout>
           </ProtectedRoute>
         }

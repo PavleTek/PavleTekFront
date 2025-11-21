@@ -1,14 +1,5 @@
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogPanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  TransitionChild,
-} from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel, Menu, MenuButton, MenuItem, MenuItems, TransitionChild } from "@headlessui/react";
 import {
   Bars3Icon,
   BellIcon,
@@ -17,7 +8,11 @@ import {
   HomeIcon,
   XMarkIcon,
   UserGroupIcon,
-  DocumentTextIcon,
+  ClipboardDocumentListIcon,
+  DocumentIcon,
+  DocumentCurrencyDollarIcon,
+  ArchiveBoxIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useAuth } from "../contexts/AuthContext";
@@ -40,15 +35,40 @@ const navigationItems: NavigationItem[] = [
     allowedRoles: ["admin", "manager"],
   },
   {
-    name: "Accounting",
+    name: "Finance",
     href: "/accounting",
     icon: ChartPieIcon,
     allowedRoles: ["admin", "manager", "accountant"],
   },
   {
-    name: "PDF",
+    name: "PDF Generator",
     href: "/pdf-generator",
-    icon: DocumentTextIcon,
+    allowedRoles: ["admin", "manager", "accountant"],
+    icon: DocumentIcon,
+  },
+  {
+    name: "Contacts & Companies",
+    href: "/contacts-and-companies",
+    allowedRoles: ["admin", "manager", "accountant"],
+    icon: ClipboardDocumentListIcon,
+  },
+  {
+    name: "Email",
+    href: "/email",
+    allowedRoles: ["admin", "manager", "accountant"],
+    icon: EnvelopeIcon,
+  },
+  {
+    name: "Ivoicing",
+    href: "/invoicing",
+    allowedRoles: ["admin", "manager", "accountant"],
+    icon: DocumentCurrencyDollarIcon,
+  },
+  {
+    name: "Mantenedores",
+    href: "/mantenedores",
+    allowedRoles: ["admin", "manager", "accountant", "operator"],
+    icon: ArchiveBoxIcon,
   },
 ];
 
@@ -96,10 +116,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <>
       <Dialog open={sidebarOpen} onClose={setSidebarOpen} className="relative z-50 lg:hidden">
-        <DialogBackdrop
-          transition
-          className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-closed:opacity-0"
-        />
+        <DialogBackdrop transition className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-closed:opacity-0" />
 
         <div className="fixed inset-0 flex">
           <DialogPanel
@@ -132,18 +149,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                               setSidebarOpen(false);
                             }}
                             className={classNames(
-                              location.pathname === item.href
-                                ? "bg-gray-50 text-primary-800"
-                                : "text-gray-700 hover:bg-gray-50 hover:text-primary-800",
+                              location.pathname === item.href ? "bg-gray-50 text-primary-800" : "text-gray-700 hover:bg-gray-50 hover:text-primary-800",
                               "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left"
                             )}
                           >
                             <item.icon
                               aria-hidden={true}
                               className={classNames(
-                                location.pathname === item.href
-                                  ? "text-primary-800"
-                                  : "text-gray-400 group-hover:text-primary-800",
+                                location.pathname === item.href ? "text-primary-800" : "text-gray-400 group-hover:text-primary-800",
                                 "size-6 shrink-0"
                               )}
                             />
@@ -162,10 +175,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                         }}
                         className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-800 w-full text-left"
                       >
-                        <Cog6ToothIcon
-                          aria-hidden={true}
-                          className="size-6 shrink-0 text-gray-400 group-hover:text-primary-800"
-                        />
+                        <Cog6ToothIcon aria-hidden={true} className="size-6 shrink-0 text-gray-400 group-hover:text-primary-800" />
                         Settings
                       </button>
                     </li>
@@ -181,9 +191,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col dark">
         {/* Sidebar component, swap this element with another sidebar if you like */}
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
-              <div className="flex h-16 shrink-0 items-center my-2 -ml-8">
-                <img alt="PavleTek" src={logoImage} className="max-w-[72%]" />
-              </div>
+          <div className="flex h-16 shrink-0 items-center my-2 -ml-8">
+            <img alt="PavleTek" src={logoImage} className="max-w-[72%]" />
+          </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
               <li>
@@ -193,9 +203,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                       <button
                         onClick={() => navigate(item.href)}
                         className={classNames(
-                          location.pathname === item.href
-                            ? "bg-gray-50 text-primary-800"
-                            : "text-gray-700 hover:bg-gray-50 hover:text-primary-800",
+                          location.pathname === item.href ? "bg-gray-50 text-primary-800" : "text-gray-700 hover:bg-gray-50 hover:text-primary-800",
                           "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left"
                         )}
                       >
@@ -218,10 +226,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     onClick={() => navigate("/settings")}
                     className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-800 w-full text-left"
                   >
-                    <Cog6ToothIcon
-                      aria-hidden={true}
-                      className="size-6 shrink-0 text-gray-400 group-hover:text-primary-800"
-                    />
+                    <Cog6ToothIcon aria-hidden={true} className="size-6 shrink-0 text-gray-400 group-hover:text-primary-800" />
                     Settings
                   </button>
                 </li>
@@ -233,11 +238,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       <div className="lg:pl-72">
         <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-xs sm:gap-x-6 sm:px-6 lg:px-8">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="-m-2.5 p-2.5 text-gray-700 hover:text-gray-900 lg:hidden"
-          >
+          <button type="button" onClick={() => setSidebarOpen(true)} className="-m-2.5 p-2.5 text-gray-700 hover:text-gray-900 lg:hidden">
             <span className="sr-only">Open sidebar</span>
             <Bars3Icon aria-hidden={true} className="size-6" />
           </button>
