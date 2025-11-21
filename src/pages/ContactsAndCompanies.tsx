@@ -44,8 +44,8 @@ const ContactsAndCompanies: React.FC = () => {
     taxID: "",
     roleInCompany: "",
     address: null,
-    country: undefined,
-    language: undefined,
+    countryId: undefined,
+    languageId: undefined,
     currencyId: undefined,
     associatedCompanyId: undefined,
     defaultBankAccountId: undefined,
@@ -136,8 +136,8 @@ const ContactsAndCompanies: React.FC = () => {
         taxID: "",
         roleInCompany: "",
         address: null,
-        country: undefined,
-        language: undefined,
+        countryId: undefined,
+        languageId: undefined,
         currencyId: undefined,
         associatedCompanyId: undefined,
         defaultBankAccountId: undefined,
@@ -183,6 +183,14 @@ const ContactsAndCompanies: React.FC = () => {
     setEditingId(item.id);
     if (activeTab === "contacts") {
       const contact = item as Contact;
+      // Find country and language IDs from the names
+      const countryId = contact.country 
+        ? countries.find(c => c.name === contact.country)?.id 
+        : undefined;
+      const languageId = contact.language 
+        ? languages.find(l => l.name === contact.language)?.id 
+        : undefined;
+      
       setContactForm({
         firstName: contact.firstName || "",
         lastName: contact.lastName || "",
@@ -194,8 +202,8 @@ const ContactsAndCompanies: React.FC = () => {
         taxID: contact.taxID || "",
         roleInCompany: contact.roleInCompany || "",
         address: contact.address || null,
-        country: contact.country || undefined,
-        language: contact.language || undefined,
+        countryId: countryId,
+        languageId: languageId,
         currencyId: contact.currencyId || undefined,
         associatedCompanyId: contact.associatedCompanyId || undefined,
         defaultBankAccountId: contact.defaultBankAccountId || undefined,
@@ -286,8 +294,8 @@ const ContactsAndCompanies: React.FC = () => {
       if (activeTab === "contacts") {
         const data: CreateContactRequest | UpdateContactRequest = {
           ...contactForm,
-          country: contactForm.country || undefined,
-          language: contactForm.language || undefined,
+          countryId: contactForm.countryId || undefined,
+          languageId: contactForm.languageId || undefined,
           currencyId: contactForm.currencyId || undefined,
           associatedCompanyId: contactForm.associatedCompanyId || undefined,
           defaultBankAccountId: contactForm.defaultBankAccountId || undefined,
@@ -351,118 +359,265 @@ const ContactsAndCompanies: React.FC = () => {
     setError(null);
   };
 
+  const getContactInitials = (firstName?: string | null, lastName?: string | null): string => {
+    const firstInitial = firstName?.charAt(0)?.toUpperCase() || "";
+    const lastInitial = lastName?.charAt(0)?.toUpperCase() || "";
+    return firstInitial + lastInitial || "C";
+  };
+
+  const getCompanyInitials = (displayName?: string | null, legalName?: string | null): string => {
+    const name = displayName || legalName || "";
+    return name.charAt(0)?.toUpperCase() || "C";
+  };
+
   const renderContactTable = () => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {contacts.map((contact) => (
-            <tr key={contact.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {`${contact.firstName || ""} ${contact.lastName || ""}`.trim() || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contact.email || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contact.phoneNumber || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {contact.associatedCompany?.displayName || contact.associatedCompany?.legalName || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contact.country || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onClick={() => handleEdit(contact)} className="text-primary-600 hover:text-primary-900 mr-4">
-                  <PencilIcon className="h-5 w-5 inline" />
-                </button>
-                <button onClick={() => handleDeleteClick(contact)} className="text-red-600 hover:text-red-900">
-                  <TrashIcon className="h-5 w-5 inline" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <div className="flow-root">
+      <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+            <table className="relative min-w-full divide-y divide-gray-300">
+              <thead>
+                <tr>
+                  <th scope="col" className="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 ">
+                    Name
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Phone
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Company
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Country
+                  </th>
+                  <th scope="col" className="py-3.5 pr-4 pl-3 text-right text-sm font-semibold text-gray-900 ">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {contacts.map((contact) => {
+                  const contactColor = contact.color || "#7ad9c5";
+                  const initials = getContactInitials(contact.firstName, contact.lastName);
+                  const fullName = `${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email || "Contact";
+                  
+                  return (
+                    <tr key={contact.id}>
+                      <td className="py-5 pr-3 pl-4 text-sm whitespace-nowrap ">
+                        <div className="flex items-center">
+                          <div className="size-11 shrink-0">
+                            <div
+                              className="size-11 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                              style={{ backgroundColor: contactColor }}
+                            >
+                              {initials}
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="font-medium text-gray-900">{fullName}</div>
+                            <div className="mt-1 text-gray-500">{contact.email || "-"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {contact.phoneNumber || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {contact.associatedCompany?.displayName || contact.associatedCompany?.legalName || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {contact.country || "-"}
+                      </td>
+                      <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap ">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => handleEdit(contact)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-50 rounded-md cursor-pointer transition-colors"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(contact)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
   );
 
   const renderCompanyTable = () => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Display Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Legal Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax ID</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {companies.map((company) => (
-            <tr key={company.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{company.displayName || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{company.legalName || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{company.taxId || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{company.country || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onClick={() => handleEdit(company)} className="text-primary-600 hover:text-primary-900 mr-4">
-                  <PencilIcon className="h-5 w-5 inline" />
-                </button>
-                <button onClick={() => handleDeleteClick(company)} className="text-red-600 hover:text-red-900">
-                  <TrashIcon className="h-5 w-5 inline" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <div className="flow-root">
+      <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+            <table className="relative min-w-full divide-y divide-gray-300">
+              <thead>
+                <tr>
+                  <th scope="col" className="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 ">
+                    Name
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Legal Name
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Tax ID
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Country
+                  </th>
+                  <th scope="col" className="py-3.5 pr-4 pl-3 text-right text-sm font-semibold text-gray-900 ">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {companies.map((company) => {
+                  const companyColor = company.color || "#7ad9c5";
+                  const initials = getCompanyInitials(company.displayName, company.legalName);
+                  const displayName = company.displayName || company.legalName || "Company";
+                  
+                  return (
+                    <tr key={company.id}>
+                      <td className="py-5 pr-3 pl-4 text-sm whitespace-nowrap ">
+                        <div className="flex items-center">
+                          <div className="size-11 shrink-0">
+                            <div
+                              className="size-11 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                              style={{ backgroundColor: companyColor }}
+                            >
+                              {initials}
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="font-medium text-gray-900">{displayName}</div>
+                            {company.legalName && company.legalName !== displayName && (
+                              <div className="mt-1 text-gray-500">{company.legalName}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {company.legalName || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {company.taxId || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {company.country || "-"}
+                      </td>
+                      <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap ">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => handleEdit(company)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-50 rounded-md cursor-pointer transition-colors"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(company)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
   );
 
   const renderBankAccountTable = () => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Holder</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Number</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Currency</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {bankAccounts.map((bankAccount) => (
-            <tr key={bankAccount.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{bankAccount.bankName || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bankAccount.accountHolder || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bankAccount.accountNumber || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bankAccount.currency?.abbreviation || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {bankAccount.ownerContact
-                  ? `${bankAccount.ownerContact.firstName || ""} ${bankAccount.ownerContact.lastName || ""}`.trim() || bankAccount.ownerContact.email
-                  : bankAccount.ownerCompany?.displayName || bankAccount.ownerCompany?.legalName || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onClick={() => handleEdit(bankAccount)} className="text-primary-600 hover:text-primary-900 mr-4">
-                  <PencilIcon className="h-5 w-5 inline" />
-                </button>
-                <button onClick={() => handleDeleteClick(bankAccount)} className="text-red-600 hover:text-red-900">
-                  <TrashIcon className="h-5 w-5 inline" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <div className="flow-root">
+      <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+            <table className="relative min-w-full divide-y divide-gray-300">
+              <thead>
+                <tr>
+                  <th scope="col" className="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 ">
+                    Bank Name
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Account Holder
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Account Number
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Currency
+                  </th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Owner
+                  </th>
+                  <th scope="col" className="py-3.5 pr-4 pl-3 text-right text-sm font-semibold text-gray-900 ">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {bankAccounts.map((bankAccount) => {
+                  const ownerName = bankAccount.ownerContact
+                    ? `${bankAccount.ownerContact.firstName || ""} ${bankAccount.ownerContact.lastName || ""}`.trim() || bankAccount.ownerContact.email || "-"
+                    : bankAccount.ownerCompany?.displayName || bankAccount.ownerCompany?.legalName || "-";
+                  
+                  return (
+                    <tr key={bankAccount.id}>
+                      <td className="py-5 pr-3 pl-4 text-sm whitespace-nowrap ">
+                        <div className="font-medium text-gray-900">{bankAccount.bankName || "-"}</div>
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {bankAccount.accountHolder || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {bankAccount.accountNumber || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {bankAccount.currency?.abbreviation || "-"}
+                      </td>
+                      <td className="px-3 py-5 text-sm whitespace-nowrap text-gray-500">
+                        {ownerName}
+                      </td>
+                      <td className="py-5 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap ">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => handleEdit(bankAccount)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-50 rounded-md cursor-pointer transition-colors"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(bankAccount)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
   );
 
   const renderContactForm = () => (
@@ -531,13 +686,13 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
           <select
-            value={contactForm.country || ""}
-            onChange={(e) => setContactForm({ ...contactForm, country: e.target.value || undefined })}
+            value={contactForm.countryId || ""}
+            onChange={(e) => setContactForm({ ...contactForm, countryId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             <option value="">Select Country</option>
             {countries.map((country) => (
-              <option key={country.id} value={country.name}>
+              <option key={country.id} value={country.id}>
                 {country.name}
               </option>
             ))}
@@ -546,13 +701,13 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
           <select
-            value={contactForm.language || ""}
-            onChange={(e) => setContactForm({ ...contactForm, language: e.target.value || undefined })}
+            value={contactForm.languageId || ""}
+            onChange={(e) => setContactForm({ ...contactForm, languageId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             <option value="">Select Language</option>
             {languages.map((language) => (
-              <option key={language.id} value={language.name}>
+              <option key={language.id} value={language.id}>
                 {language.name}
               </option>
             ))}
@@ -608,7 +763,7 @@ const ContactsAndCompanies: React.FC = () => {
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="">Select Bank Account</option>
-          {bankAccounts.filter((ba) => ba.ownerContactId === editingId || !editingId).map((bankAccount) => (
+          {bankAccounts.filter((ba) => isEditMode && editingId ? ba.ownerContactId === editingId : false).map((bankAccount) => (
             <option key={bankAccount.id} value={bankAccount.id}>
               {bankAccount.bankName} - {bankAccount.accountNumber}
             </option>
@@ -679,10 +834,11 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
           <input
-            type="url"
+            type="text"
             value={companyForm.website}
             onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            placeholder="https://example.com"
           />
         </div>
       </div>
@@ -750,7 +906,7 @@ const ContactsAndCompanies: React.FC = () => {
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="">Select Contact</option>
-          {contacts.map((contact) => (
+          {contacts.filter((contact) => isEditMode && editingId ? contact.associatedCompanyId === editingId : false).map((contact) => (
             <option key={contact.id} value={contact.id}>
               {`${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email}
             </option>
@@ -1017,38 +1173,53 @@ const ContactsAndCompanies: React.FC = () => {
 
       {/* Content */}
       <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {activeTab === "contacts" ? "Contacts" : activeTab === "companies" ? "Companies" : "Bank Accounts"}
-          </h2>
-          <button
-            onClick={handleCreate}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add {activeTab === "contacts" ? "Contact" : activeTab === "companies" ? "Company" : "Bank Account"}
-          </button>
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <div className="sm:flex sm:items-center">
+            <div className="sm:flex-auto">
+              <h1 className="text-base font-semibold text-gray-900">
+                {activeTab === "contacts" ? "Contacts" : activeTab === "companies" ? "Companies" : "Bank Accounts"}
+              </h1>
+              <p className="mt-2 text-sm text-gray-700">
+                {activeTab === "contacts"
+                  ? "A list of all contacts in your account including their name, email, phone, and company."
+                  : activeTab === "companies"
+                  ? "A list of all companies in your account including their display name, legal name, and tax ID."
+                  : "A list of all bank accounts in your account including bank name, account number, and owner."}
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="block rounded-md bg-primary-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-xs hover:bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+              >
+                Add {activeTab === "contacts" ? "Contact" : activeTab === "companies" ? "Company" : "Bank Account"}
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="p-6">
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
-            <>
-              {activeTab === "contacts" && contacts.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No contacts found. Create one to get started.</div>
-              )}
-              {activeTab === "companies" && companies.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No companies found. Create one to get started.</div>
-              )}
-              {activeTab === "bankAccounts" && bankAccounts.length === 0 && (
-                <div className="text-center py-8 text-gray-500">No bank accounts found. Create one to get started.</div>
-              )}
-              {activeTab === "contacts" && contacts.length > 0 && renderContactTable()}
-              {activeTab === "companies" && companies.length > 0 && renderCompanyTable()}
-              {activeTab === "bankAccounts" && bankAccounts.length > 0 && renderBankAccountTable()}
-            </>
-          )}
-        </div>
+        {loading ? (
+          <div className="px-4 sm:px-6 lg:px-8 pb-6 text-center py-8">Loading...</div>
+        ) : (
+          <>
+            {activeTab === "contacts" && contacts.length === 0 && (
+              <div className="px-4 sm:px-6 lg:px-8 pb-6 text-center py-8 text-gray-500">No contacts found. Create one to get started.</div>
+            )}
+            {activeTab === "companies" && companies.length === 0 && (
+              <div className="px-4 sm:px-6 lg:px-8 pb-6 text-center py-8 text-gray-500">No companies found. Create one to get started.</div>
+            )}
+            {activeTab === "bankAccounts" && bankAccounts.length === 0 && (
+              <div className="px-4 sm:px-6 lg:px-8 pb-6 text-center py-8 text-gray-500">No bank accounts found. Create one to get started.</div>
+            )}
+            {(activeTab === "contacts" && contacts.length > 0) || (activeTab === "companies" && companies.length > 0) || (activeTab === "bankAccounts" && bankAccounts.length > 0) ? (
+              <div className="px-4 sm:px-6 lg:px-8 pb-6">
+                {activeTab === "contacts" && contacts.length > 0 && renderContactTable()}
+                {activeTab === "companies" && companies.length > 0 && renderCompanyTable()}
+                {activeTab === "bankAccounts" && bankAccounts.length > 0 && renderBankAccountTable()}
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
 
       {/* Create/Edit Dialog */}

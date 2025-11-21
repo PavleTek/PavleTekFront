@@ -260,8 +260,8 @@ export interface CreateContactRequest {
   taxID?: string;
   roleInCompany?: string;
   address?: any;
-  country?: string;
-  language?: string;
+  countryId?: number;
+  languageId?: number;
   currencyId?: number;
   associatedCompanyId?: number;
   defaultBankAccountId?: number;
@@ -278,8 +278,8 @@ export interface UpdateContactRequest {
   taxID?: string;
   roleInCompany?: string;
   address?: any;
-  country?: string;
-  language?: string;
+  countryId?: number;
+  languageId?: number;
   currencyId?: number;
   associatedCompanyId?: number;
   defaultBankAccountId?: number;
