@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { emailTemplateService } from "../services/emailTemplateService";
 import { emailService } from "../services/emailService";
 import { contactService } from "../services/contactService";
@@ -19,16 +19,19 @@ const Email: React.FC = () => {
   
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name: string } | null>(null);
   
   // Email input states for manual entry
   const [destinationEmailInput, setDestinationEmailInput] = useState("");
   const [ccEmailInput, setCcEmailInput] = useState("");
   const [bccEmailInput, setBccEmailInput] = useState("");
+  
+  // Selected contact IDs for dropdowns
+  const [selectedDestinationContactId, setSelectedDestinationContactId] = useState<number | null>(null);
+  const [selectedCcContactId, setSelectedCcContactId] = useState<number | null>(null);
+  const [selectedBccContactId, setSelectedBccContactId] = useState<number | null>(null);
   
   // Form state
   const [templateForm, setTemplateForm] = useState<CreateEmailTemplateRequest>({
@@ -81,6 +84,9 @@ const Email: React.FC = () => {
     setDestinationEmailInput("");
     setCcEmailInput("");
     setBccEmailInput("");
+    setSelectedDestinationContactId(null);
+    setSelectedCcContactId(null);
+    setSelectedBccContactId(null);
     setDialogOpen(true);
   };
 
@@ -111,12 +117,10 @@ const Email: React.FC = () => {
     setDestinationEmailInput("");
     setCcEmailInput("");
     setBccEmailInput("");
+    setSelectedDestinationContactId(null);
+    setSelectedCcContactId(null);
+    setSelectedBccContactId(null);
     setDialogOpen(true);
-  };
-
-  const handlePreview = (template: EmailTemplate) => {
-    setPreviewTemplate(template);
-    setPreviewDialogOpen(true);
   };
 
   const handleDeleteClick = (template: EmailTemplate) => {
@@ -162,6 +166,10 @@ const Email: React.FC = () => {
         ...templateForm,
         [field]: addEmailToArray(currentEmails, contact.email),
       });
+      // Reset the selected contact ID after adding
+      if (field === 'destinationEmail') setSelectedDestinationContactId(null);
+      if (field === 'ccEmail') setSelectedCcContactId(null);
+      if (field === 'bccEmail') setSelectedBccContactId(null);
     }
   };
 
@@ -183,13 +191,43 @@ const Email: React.FC = () => {
     e.preventDefault();
     try {
       setError(null);
+      
+      // Include any selected contact emails from dropdowns that weren't added yet
+      let finalDestinationEmail = templateForm.destinationEmail as string[] | null;
+      let finalCcEmail = templateForm.ccEmail as string[] | null;
+      let finalBccEmail = templateForm.bccEmail as string[] | null;
+      
+      // Add selected destination contact email if exists
+      if (selectedDestinationContactId) {
+        const contact = contacts.find((c) => c.id === selectedDestinationContactId);
+        if (contact && contact.email) {
+          finalDestinationEmail = addEmailToArray(finalDestinationEmail, contact.email);
+        }
+      }
+      
+      // Add selected CC contact email if exists
+      if (selectedCcContactId) {
+        const contact = contacts.find((c) => c.id === selectedCcContactId);
+        if (contact && contact.email) {
+          finalCcEmail = addEmailToArray(finalCcEmail, contact.email);
+        }
+      }
+      
+      // Add selected BCC contact email if exists
+      if (selectedBccContactId) {
+        const contact = contacts.find((c) => c.id === selectedBccContactId);
+        if (contact && contact.email) {
+          finalBccEmail = addEmailToArray(finalBccEmail, contact.email);
+        }
+      }
+      
       const data: CreateEmailTemplateRequest | UpdateEmailTemplateRequest = {
         ...templateForm,
         fromEmail: templateForm.fromEmail || undefined,
         // Ensure arrays are stored as JSON arrays
-        destinationEmail: templateForm.destinationEmail || null,
-        ccEmail: templateForm.ccEmail || null,
-        bccEmail: templateForm.bccEmail || null,
+        destinationEmail: finalDestinationEmail || null,
+        ccEmail: finalCcEmail || null,
+        bccEmail: finalBccEmail || null,
       };
       if (isEditMode && editingId) {
         const updated = await emailTemplateService.updateEmailTemplate(editingId, data as UpdateEmailTemplateRequest);
@@ -203,6 +241,9 @@ const Email: React.FC = () => {
       setDialogOpen(false);
       setIsEditMode(false);
       setEditingId(null);
+      setSelectedDestinationContactId(null);
+      setSelectedCcContactId(null);
+      setSelectedBccContactId(null);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to save");
     }
@@ -213,6 +254,9 @@ const Email: React.FC = () => {
     setIsEditMode(false);
     setEditingId(null);
     setError(null);
+    setSelectedDestinationContactId(null);
+    setSelectedCcContactId(null);
+    setSelectedBccContactId(null);
   };
 
   return (
@@ -231,7 +275,7 @@ const Email: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900">Email Templates</h2>
           <button
             onClick={handleCreate}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 cursor-pointer"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
             Create Template
@@ -262,13 +306,10 @@ const Email: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{template.fromEmail || "-"}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(template.createdAt).toLocaleDateString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onClick={() => handlePreview(template)} className="text-primary-600 hover:text-primary-900 mr-4">
-                          <EyeIcon className="h-5 w-5 inline" />
-                        </button>
-                        <button onClick={() => handleEdit(template)} className="text-primary-600 hover:text-primary-900 mr-4">
+                        <button onClick={() => handleEdit(template)} className="text-primary-600 hover:text-primary-900 mr-4 cursor-pointer">
                           <PencilIcon className="h-5 w-5 inline" />
                         </button>
-                        <button onClick={() => handleDeleteClick(template)} className="text-red-600 hover:text-red-900">
+                        <button onClick={() => handleDeleteClick(template)} className="text-red-600 hover:text-red-900 cursor-pointer">
                           <TrashIcon className="h-5 w-5 inline" />
                         </button>
                       </td>
@@ -290,7 +331,7 @@ const Email: React.FC = () => {
               <DialogTitle className="text-lg font-semibold text-gray-900">
                 {isEditMode ? "Edit Email Template" : "Create Email Template"}
               </DialogTitle>
-              <button onClick={closeDialog} className="text-gray-400 hover:text-gray-500">
+              <button onClick={closeDialog} className="text-gray-400 hover:text-gray-500 cursor-pointer">
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
@@ -336,11 +377,9 @@ const Email: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <select
+                      value={selectedDestinationContactId || ""}
                       onChange={(e) => {
-                        if (e.target.value) {
-                          addContactEmail('destinationEmail', parseInt(e.target.value));
-                          e.target.value = "";
-                        }
+                        setSelectedDestinationContactId(e.target.value ? parseInt(e.target.value) : null);
                       }}
                       className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     >
@@ -351,6 +390,18 @@ const Email: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedDestinationContactId) {
+                          addContactEmail('destinationEmail', selectedDestinationContactId);
+                        }
+                      }}
+                      disabled={!selectedDestinationContactId}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Add
+                    </button>
                     <div className="flex gap-2 flex-1">
                       <input
                         type="email"
@@ -368,7 +419,7 @@ const Email: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => addManualEmail('destinationEmail', destinationEmailInput)}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm cursor-pointer"
                       >
                         Add
                       </button>
@@ -390,7 +441,7 @@ const Email: React.FC = () => {
                                 destinationEmail: removeEmailFromArray(templateForm.destinationEmail as string[] | null, email),
                               });
                             }}
-                            className="text-primary-600 hover:text-primary-900"
+                            className="text-primary-600 hover:text-primary-900 cursor-pointer"
                           >
                             <XMarkIcon className="h-4 w-4" />
                           </button>
@@ -407,11 +458,9 @@ const Email: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <select
+                      value={selectedCcContactId || ""}
                       onChange={(e) => {
-                        if (e.target.value) {
-                          addContactEmail('ccEmail', parseInt(e.target.value));
-                          e.target.value = "";
-                        }
+                        setSelectedCcContactId(e.target.value ? parseInt(e.target.value) : null);
                       }}
                       className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     >
@@ -422,6 +471,18 @@ const Email: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedCcContactId) {
+                          addContactEmail('ccEmail', selectedCcContactId);
+                        }
+                      }}
+                      disabled={!selectedCcContactId}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Add
+                    </button>
                     <div className="flex gap-2 flex-1">
                       <input
                         type="email"
@@ -439,7 +500,7 @@ const Email: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => addManualEmail('ccEmail', ccEmailInput)}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm cursor-pointer"
                       >
                         Add
                       </button>
@@ -461,7 +522,7 @@ const Email: React.FC = () => {
                                 ccEmail: removeEmailFromArray(templateForm.ccEmail as string[] | null, email),
                               });
                             }}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-blue-600 hover:text-blue-900 cursor-pointer"
                           >
                             <XMarkIcon className="h-4 w-4" />
                           </button>
@@ -478,11 +539,9 @@ const Email: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <select
+                      value={selectedBccContactId || ""}
                       onChange={(e) => {
-                        if (e.target.value) {
-                          addContactEmail('bccEmail', parseInt(e.target.value));
-                          e.target.value = "";
-                        }
+                        setSelectedBccContactId(e.target.value ? parseInt(e.target.value) : null);
                       }}
                       className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     >
@@ -493,6 +552,18 @@ const Email: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedBccContactId) {
+                          addContactEmail('bccEmail', selectedBccContactId);
+                        }
+                      }}
+                      disabled={!selectedBccContactId}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Add
+                    </button>
                     <div className="flex gap-2 flex-1">
                       <input
                         type="email"
@@ -510,7 +581,7 @@ const Email: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => addManualEmail('bccEmail', bccEmailInput)}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm cursor-pointer"
                       >
                         Add
                       </button>
@@ -532,7 +603,7 @@ const Email: React.FC = () => {
                                 bccEmail: removeEmailFromArray(templateForm.bccEmail as string[] | null, email),
                               });
                             }}
-                            className="text-gray-600 hover:text-gray-900"
+                            className="text-gray-600 hover:text-gray-900 cursor-pointer"
                           >
                             <XMarkIcon className="h-4 w-4" />
                           </button>
@@ -554,75 +625,14 @@ const Email: React.FC = () => {
                 />
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+                <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 cursor-pointer">
                   {isEditMode ? "Update" : "Create"}
                 </button>
               </div>
             </form>
-          </DialogPanel>
-        </div>
-      </Dialog>
-
-      {/* Preview Dialog */}
-      <Dialog open={previewDialogOpen} onClose={() => setPreviewDialogOpen(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
-          <DialogPanel className="max-w-3xl w-full bg-white rounded-lg shadow-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <DialogTitle className="text-lg font-semibold text-gray-900">Email Template Preview</DialogTitle>
-              <button onClick={() => setPreviewDialogOpen(false)} className="text-gray-400 hover:text-gray-500">
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            {previewTemplate && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{previewTemplate.description || "-"}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">From Email</label>
-                  <p className="text-sm text-gray-900">{previewTemplate.fromEmail || "-"}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Destination Emails (To)</label>
-                  <div className="text-sm text-gray-900">
-                    {Array.isArray(previewTemplate.destinationEmail) 
-                      ? previewTemplate.destinationEmail.join(", ") || "-"
-                      : previewTemplate.destinationEmail || "-"}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CC Emails</label>
-                  <div className="text-sm text-gray-900">
-                    {Array.isArray(previewTemplate.ccEmail) 
-                      ? previewTemplate.ccEmail.join(", ") || "-"
-                      : previewTemplate.ccEmail || "-"}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">BCC Emails</label>
-                  <div className="text-sm text-gray-900">
-                    {Array.isArray(previewTemplate.bccEmail) 
-                      ? previewTemplate.bccEmail.join(", ") || "-"
-                      : previewTemplate.bccEmail || "-"}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                  <p className="text-sm text-gray-900">{previewTemplate.subject || "-"}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <div className="border border-gray-200 rounded-md p-4 bg-gray-50 max-h-96 overflow-y-auto">
-                    <div dangerouslySetInnerHTML={{ __html: previewTemplate.content || "" }} />
-                  </div>
-                </div>
-              </div>
-            )}
           </DialogPanel>
         </div>
       </Dialog>

@@ -749,8 +749,51 @@ const ContactsAndCompanies: React.FC = () => {
       </div>
   );
 
-  const renderContactForm = () => (
-    <form onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto">
+  const renderContactForm = () => {
+    const lastKeyDownTarget = React.useRef<HTMLElement | null>(null);
+    
+    return (
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          
+          // Check if submit was triggered by Enter on a SELECT element
+          if (lastKeyDownTarget.current?.tagName === 'SELECT') {
+            return;
+          }
+          
+          // Allow button clicks to submit - check if submitter exists (button was clicked)
+          const submitter = (e.nativeEvent as SubmitEvent).submitter;
+          if (submitter && submitter.tagName === 'BUTTON') {
+            // Button was clicked, allow submission
+            handleSave(e);
+            return;
+          }
+          
+          // For all other cases (like Enter key without Ctrl/Cmd), do nothing
+        }}
+        onKeyDown={(e) => {
+          const target = e.target as HTMLElement;
+          lastKeyDownTarget.current = target;
+          
+          // Allow Enter to work normally in SELECT elements (opens dropdown)
+          if (target.tagName === 'SELECT' && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+            // Don't prevent default - let browser handle Enter on dropdowns
+            return;
+          }
+          
+          // Allow Ctrl+Enter or Cmd+Enter to submit
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            handleSave(e as any);
+          }
+          // For regular Enter on other inputs, prevent form submission
+          else if (e.key === 'Enter') {
+            e.preventDefault();
+          }
+        }}
+        className="space-y-4 max-h-[70vh] overflow-y-auto"
+      >
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
@@ -1039,18 +1082,62 @@ const ContactsAndCompanies: React.FC = () => {
         />
       </div>
       <div className="flex gap-3 pt-4">
-        <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+        <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer">
           Cancel
         </button>
-        <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+        <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 cursor-pointer">
           {isEditMode ? "Update" : "Create"}
         </button>
       </div>
-    </form>
-  );
+      </form>
+    );
+  };
 
-  const renderCompanyForm = () => (
-    <form onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto">
+  const renderCompanyForm = () => {
+    const lastKeyDownTarget = React.useRef<HTMLElement | null>(null);
+    
+    return (
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          
+          // Check if submit was triggered by Enter on a SELECT element
+          if (lastKeyDownTarget.current?.tagName === 'SELECT') {
+            return;
+          }
+          
+          // Allow button clicks to submit - check if submitter exists (button was clicked)
+          const submitter = (e.nativeEvent as SubmitEvent).submitter;
+          if (submitter && submitter.tagName === 'BUTTON') {
+            // Button was clicked, allow submission
+            handleSave(e);
+            return;
+          }
+          
+          // For all other cases (like Enter key without Ctrl/Cmd), do nothing
+        }}
+        onKeyDown={(e) => {
+          const target = e.target as HTMLElement;
+          lastKeyDownTarget.current = target;
+          
+          // Allow Enter to work normally in SELECT elements (opens dropdown)
+          if (target.tagName === 'SELECT' && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+            // Don't prevent default - let browser handle Enter on dropdowns
+            return;
+          }
+          
+          // Allow Ctrl+Enter or Cmd+Enter to submit
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            handleSave(e as any);
+          }
+          // For regular Enter on other inputs, prevent form submission
+          else if (e.key === 'Enter') {
+            e.preventDefault();
+          }
+        }}
+        className="space-y-4 max-h-[70vh] overflow-y-auto"
+      >
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
@@ -1294,18 +1381,62 @@ const ContactsAndCompanies: React.FC = () => {
         )}
       </div>
       <div className="flex gap-3 pt-4">
-        <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+        <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer">
           Cancel
         </button>
-        <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+        <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 cursor-pointer">
           {isEditMode ? "Update" : "Create"}
         </button>
       </div>
-    </form>
-  );
+      </form>
+    );
+  };
 
-  const renderBankAccountForm = () => (
-    <form onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto">
+  const renderBankAccountForm = () => {
+    const lastKeyDownTarget = React.useRef<HTMLElement | null>(null);
+    
+    return (
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          
+          // Check if submit was triggered by Enter on a SELECT element
+          if (lastKeyDownTarget.current?.tagName === 'SELECT') {
+            return;
+          }
+          
+          // Allow button clicks to submit - check if submitter exists (button was clicked)
+          const submitter = (e.nativeEvent as SubmitEvent).submitter;
+          if (submitter && submitter.tagName === 'BUTTON') {
+            // Button was clicked, allow submission
+            handleSave(e);
+            return;
+          }
+          
+          // For all other cases (like Enter key without Ctrl/Cmd), do nothing
+        }}
+        onKeyDown={(e) => {
+          const target = e.target as HTMLElement;
+          lastKeyDownTarget.current = target;
+          
+          // Allow Enter to work normally in SELECT elements (opens dropdown)
+          if (target.tagName === 'SELECT' && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+            // Don't prevent default - let browser handle Enter on dropdowns
+            return;
+          }
+          
+          // Allow Ctrl+Enter or Cmd+Enter to submit
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            handleSave(e as any);
+          }
+          // For regular Enter on other inputs, prevent form submission
+          else if (e.key === 'Enter') {
+            e.preventDefault();
+          }
+        }}
+        className="space-y-4 max-h-[70vh] overflow-y-auto"
+      >
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
@@ -1486,15 +1617,16 @@ const ContactsAndCompanies: React.FC = () => {
         />
       </div>
       <div className="flex gap-3 pt-4">
-        <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+        <button type="button" onClick={closeDialog} className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer">
           Cancel
         </button>
-        <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+        <button type="submit" className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 cursor-pointer">
           {isEditMode ? "Update" : "Create"}
         </button>
       </div>
-    </form>
-  );
+      </form>
+    );
+  };
 
   return (
     <div className="space-y-6">
