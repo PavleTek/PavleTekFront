@@ -37,12 +37,16 @@ const PDFGenerator: React.FC = () => {
     invoiceNumber: "00042",
     companyName: "PavleTek",
     companyAddress: "7601 Churchill Way 1338",
-    companyCityStateZip: "Dallas, TX, 75251",
+    companyCity: "Dallas",
+    companyState: "TX",
+    companyZip: "75251",
     companyPhone: "+1 940 603 9449",
     companyEmail: "Pavle@PavleTek.com",
     invoiceToName: "Kibernum USA LLC",
     invoiceToAddress: "5700 Granite Parkway STE 200",
-    invoiceToCityStateZip: "Plano, TX, 75024",
+    invoiceToCity: "Plano",
+    invoiceToState: "TX",
+    invoiceToZip: "75024",
     invoiceToEmail: "Gvozden.Mladenovic@kibernum.com",
     description: "Software development services for October 2025 for the project STRD-0004",
     items: [
@@ -59,12 +63,16 @@ const PDFGenerator: React.FC = () => {
     fromCompanyName: "PavleTek",
     companyName: "PavleTek",
     companyAddress: "7601 Churchill Way 1338",
-    companyCityStateZip: "Dallas, TX, 75251",
+    companyCity: "Dallas",
+    companyState: "TX",
+    companyZip: "75251",
     companyPhone: "+1 940 603 9449",
     companyEmail: "Pavle@PavleTek.com",
     invoiceToName: "Kibernum USA LLC",
     invoiceToAddress: "5700 Granite Parkway STE 200",
-    invoiceToCityStateZip: "Plano, TX, 75024",
+    invoiceToCity: "Plano",
+    invoiceToState: "TX",
+    invoiceToZip: "75024",
     invoiceToEmail: "Gvozden.Mladenovic@kibernum.com",
     description: "Software development services for October 2025 for the project STRD-0004",
     items: [
@@ -80,7 +88,7 @@ const PDFGenerator: React.FC = () => {
     const day = String(today.getDate()).padStart(2, "0");
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const year = today.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${month}/${day}/${year}`; // US format: MM/DD/YYYY
   };
 
   const [kibernumData, setKibernumData] = useState({
@@ -134,7 +142,105 @@ const PDFGenerator: React.FC = () => {
       return null;
     }
 
-    // Capture the content as canvas with onclone to fix oklch colors
+    // Special handling for KibernumAS - capture each page separately
+    if (selectedTemplate === "kibernum") {
+      try {
+        const pdf = new jsPDF("p", "mm", "a4");
+        const imgWidth = 210; // A4 width in mm
+        
+        // contentRef.current IS the [data-pdf-content] element
+        const mainContainer = contentRef.current;
+        if (!mainContainer) {
+          console.error("Main container not found");
+          return null;
+        }
+
+        // Get all page containers (first page + item pages)
+        const pageContainers = mainContainer.querySelectorAll(".pdf-page");
+        console.log(`Found ${pageContainers.length} page containers`);
+        
+        if (pageContainers.length === 0) {
+          console.log("No page containers found, falling back to full capture");
+          // Fallback: capture the whole container
+          const canvas = await html2canvas(mainContainer, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: "#ffffff",
+            onclone: (clonedDoc) => {
+              const clonedElement = clonedDoc.querySelector("[data-pdf-content]") as HTMLElement;
+              if (clonedElement) {
+                convertOklchToRgb(clonedElement);
+              }
+            },
+          });
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          const imgData = canvas.toDataURL("image/png");
+          pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+          return pdf;
+        }
+        
+        for (let i = 0; i < pageContainers.length; i++) {
+          const pageContainer = pageContainers[i] as HTMLElement;
+          console.log(`Capturing page ${i + 1} of ${pageContainers.length}`);
+          
+          // Ensure the page container is visible and properly positioned
+          const originalDisplay = pageContainer.style.display;
+          const originalPosition = pageContainer.style.position;
+          pageContainer.style.display = "block";
+          pageContainer.style.position = "relative";
+          
+          try {
+            // Capture this page as canvas
+            const canvas = await html2canvas(pageContainer, {
+              scale: 2,
+              useCORS: true,
+              logging: true, // Enable logging to see what's happening
+              backgroundColor: "#ffffff",
+              windowWidth: pageContainer.scrollWidth,
+              windowHeight: pageContainer.scrollHeight,
+              onclone: (_clonedDoc, element) => {
+                // Convert colors for the cloned page
+                if (element) {
+                  convertOklchToRgb(element);
+                }
+              },
+            });
+
+            // Restore original styles
+            pageContainer.style.display = originalDisplay;
+            pageContainer.style.position = originalPosition;
+
+            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+              console.error(`Failed to capture page ${i + 1}: canvas is empty`);
+              continue;
+            }
+
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const imgData = canvas.toDataURL("image/png");
+
+            if (i > 0) {
+              pdf.addPage();
+            }
+            
+            pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+          } catch (pageError) {
+            console.error(`Error capturing page ${i + 1}:`, pageError);
+            // Restore original styles even on error
+            pageContainer.style.display = originalDisplay;
+            pageContainer.style.position = originalPosition;
+            throw pageError;
+          }
+        }
+
+        return pdf;
+      } catch (error) {
+        console.error("Error generating KibernumAS PDF:", error);
+        throw error;
+      }
+    }
+
+    // Standard PDF generation for other templates
     const canvas = await html2canvas(contentRef.current, {
       scale: 2,
       useCORS: true,
@@ -337,7 +443,50 @@ const PDFGenerator: React.FC = () => {
   const renderTemplate = () => {
     switch (selectedTemplate) {
       case "pavletek":
-        return <PavletekInvoice ref={contentRef} {...pavletekData} />;
+        // Create mock Company/Contact objects from form data
+        const fromCompanyMock = {
+          id: 0,
+          address: {
+            addressLine1: pavletekData.companyAddress,
+            city: pavletekData.companyCity,
+            state: pavletekData.companyState,
+            zipCode: pavletekData.companyZip,
+          },
+        };
+        const fromContactMock = {
+          id: 0,
+          phoneNumber: pavletekData.companyPhone,
+          email: pavletekData.companyEmail,
+        };
+        const toCompanyMock = {
+          id: 0,
+          legalName: pavletekData.invoiceToName,
+          displayName: pavletekData.invoiceToName,
+          address: {
+            addressLine1: pavletekData.invoiceToAddress,
+            city: pavletekData.invoiceToCity,
+            state: pavletekData.invoiceToState,
+            zipCode: pavletekData.invoiceToZip,
+          },
+        };
+        const toContactMock = {
+          id: 0,
+          email: pavletekData.invoiceToEmail,
+        };
+        
+        return (
+          <PavletekInvoice
+            ref={contentRef}
+            date={pavletekData.date}
+            invoiceNumber={pavletekData.invoiceNumber}
+            fromCompany={fromCompanyMock as any}
+            fromContact={fromContactMock as any}
+            toCompany={toCompanyMock as any}
+            toContact={toContactMock as any}
+            items={pavletekData.items}
+            salesTax={pavletekData.salesTax}
+          />
+        );
       case "regular":
         return <RegularInvoice ref={contentRef} {...regularData} />;
       case "kibernum":
@@ -391,14 +540,34 @@ const PDFGenerator: React.FC = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City, State, ZIP</label>
-              <input
-                type="text"
-                value={pavletekData.companyCityStateZip}
-                onChange={(e) => setPavletekData({ ...pavletekData, companyCityStateZip: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <input
+                  type="text"
+                  value={pavletekData.companyCity}
+                  onChange={(e) => setPavletekData({ ...pavletekData, companyCity: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <input
+                  type="text"
+                  value={pavletekData.companyState}
+                  onChange={(e) => setPavletekData({ ...pavletekData, companyState: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ZIP</label>
+                <input
+                  type="text"
+                  value={pavletekData.companyZip}
+                  onChange={(e) => setPavletekData({ ...pavletekData, companyZip: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -438,14 +607,34 @@ const PDFGenerator: React.FC = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To City, State, ZIP</label>
-              <input
-                type="text"
-                value={pavletekData.invoiceToCityStateZip}
-                onChange={(e) => setPavletekData({ ...pavletekData, invoiceToCityStateZip: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To City</label>
+                <input
+                  type="text"
+                  value={pavletekData.invoiceToCity}
+                  onChange={(e) => setPavletekData({ ...pavletekData, invoiceToCity: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To State</label>
+                <input
+                  type="text"
+                  value={pavletekData.invoiceToState}
+                  onChange={(e) => setPavletekData({ ...pavletekData, invoiceToState: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To ZIP</label>
+                <input
+                  type="text"
+                  value={pavletekData.invoiceToZip}
+                  onChange={(e) => setPavletekData({ ...pavletekData, invoiceToZip: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Email</label>
@@ -579,14 +768,34 @@ const PDFGenerator: React.FC = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City, State, ZIP</label>
-              <input
-                type="text"
-                value={regularData.companyCityStateZip}
-                onChange={(e) => setRegularData({ ...regularData, companyCityStateZip: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <input
+                  type="text"
+                  value={regularData.companyCity}
+                  onChange={(e) => setRegularData({ ...regularData, companyCity: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <input
+                  type="text"
+                  value={regularData.companyState}
+                  onChange={(e) => setRegularData({ ...regularData, companyState: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ZIP</label>
+                <input
+                  type="text"
+                  value={regularData.companyZip}
+                  onChange={(e) => setRegularData({ ...regularData, companyZip: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -626,14 +835,34 @@ const PDFGenerator: React.FC = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To City, State, ZIP</label>
-              <input
-                type="text"
-                value={regularData.invoiceToCityStateZip}
-                onChange={(e) => setRegularData({ ...regularData, invoiceToCityStateZip: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To City</label>
+                <input
+                  type="text"
+                  value={regularData.invoiceToCity}
+                  onChange={(e) => setRegularData({ ...regularData, invoiceToCity: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To State</label>
+                <input
+                  type="text"
+                  value={regularData.invoiceToState}
+                  onChange={(e) => setRegularData({ ...regularData, invoiceToState: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To ZIP</label>
+                <input
+                  type="text"
+                  value={regularData.invoiceToZip}
+                  onChange={(e) => setRegularData({ ...regularData, invoiceToZip: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Invoice To Email</label>
@@ -879,7 +1108,9 @@ const PDFGenerator: React.FC = () => {
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          {renderTemplate()}
+          <div className="overflow-hidden" style={{ width: '210mm', margin: '0 auto' }}>
+            {renderTemplate()}
+          </div>
         </div>
       </div>
 

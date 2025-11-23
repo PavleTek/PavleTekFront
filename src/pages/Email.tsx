@@ -42,6 +42,9 @@ const Email: React.FC = () => {
     ccEmail: null,
     bccEmail: null,
     fromEmail: undefined,
+    toContactIds: [],
+    ccContactIds: [],
+    bccContactIds: [],
   });
   
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -80,6 +83,9 @@ const Email: React.FC = () => {
       ccEmail: null,
       bccEmail: null,
       fromEmail: undefined,
+      toContactIds: [],
+      ccContactIds: [],
+      bccContactIds: [],
     });
     setDestinationEmailInput("");
     setCcEmailInput("");
@@ -94,25 +100,44 @@ const Email: React.FC = () => {
     setIsEditMode(true);
     setEditingId(template.id);
     
-    // Parse JSON arrays if they exist, otherwise use empty arrays
-    const destinationEmails = Array.isArray(template.destinationEmail) 
+    // Get contact emails to filter them out from hard-typed emails
+    const toContactEmails = (template.toContactIds || [])
+      .map(id => contacts.find(c => c.id === id)?.email)
+      .filter(email => email) as string[];
+    const ccContactEmails = (template.ccContactIds || [])
+      .map(id => contacts.find(c => c.id === id)?.email)
+      .filter(email => email) as string[];
+    const bccContactEmails = (template.bccContactIds || [])
+      .map(id => contacts.find(c => c.id === id)?.email)
+      .filter(email => email) as string[];
+    
+    // Parse merged emails and filter out contact emails to get only hard-typed emails
+    const allDestinationEmails = Array.isArray(template.destinationEmail) 
       ? template.destinationEmail 
       : template.destinationEmail ? [template.destinationEmail] : [];
-    const ccEmails = Array.isArray(template.ccEmail) 
+    const allCcEmails = Array.isArray(template.ccEmail) 
       ? template.ccEmail 
       : template.ccEmail ? [template.ccEmail] : [];
-    const bccEmails = Array.isArray(template.bccEmail) 
+    const allBccEmails = Array.isArray(template.bccEmail) 
       ? template.bccEmail 
       : template.bccEmail ? [template.bccEmail] : [];
+    
+    // Filter out contact emails to get only hard-typed emails
+    const hardTypedDestinationEmails = allDestinationEmails.filter(email => !toContactEmails.includes(email));
+    const hardTypedCcEmails = allCcEmails.filter(email => !ccContactEmails.includes(email));
+    const hardTypedBccEmails = allBccEmails.filter(email => !bccContactEmails.includes(email));
     
     setTemplateForm({
       description: template.description || "",
       subject: template.subject || "",
       content: template.content || "",
-      destinationEmail: destinationEmails.length > 0 ? destinationEmails : null,
-      ccEmail: ccEmails.length > 0 ? ccEmails : null,
-      bccEmail: bccEmails.length > 0 ? bccEmails : null,
+      destinationEmail: hardTypedDestinationEmails.length > 0 ? hardTypedDestinationEmails : null,
+      ccEmail: hardTypedCcEmails.length > 0 ? hardTypedCcEmails : null,
+      bccEmail: hardTypedBccEmails.length > 0 ? hardTypedBccEmails : null,
       fromEmail: template.fromEmail || undefined,
+      toContactIds: template.toContactIds || [],
+      ccContactIds: template.ccContactIds || [],
+      bccContactIds: template.bccContactIds || [],
     });
     setDestinationEmailInput("");
     setCcEmailInput("");
@@ -160,16 +185,36 @@ const Email: React.FC = () => {
 
   const addContactEmail = (field: 'destinationEmail' | 'ccEmail' | 'bccEmail', contactId: number) => {
     const contact = contacts.find((c) => c.id === contactId);
-    if (contact && contact.email) {
-      const currentEmails = templateForm[field] as string[] | null;
-      setTemplateForm({
-        ...templateForm,
-        [field]: addEmailToArray(currentEmails, contact.email),
-      });
-      // Reset the selected contact ID after adding
-      if (field === 'destinationEmail') setSelectedDestinationContactId(null);
-      if (field === 'ccEmail') setSelectedCcContactId(null);
-      if (field === 'bccEmail') setSelectedBccContactId(null);
+    if (contact) {
+      // Add contact ID to the appropriate contactIds array instead of adding email to hard-typed array
+      if (field === 'destinationEmail') {
+        const currentIds = templateForm.toContactIds || [];
+        if (!currentIds.includes(contactId)) {
+          setTemplateForm({
+            ...templateForm,
+            toContactIds: [...currentIds, contactId],
+          });
+        }
+        setSelectedDestinationContactId(null);
+      } else if (field === 'ccEmail') {
+        const currentIds = templateForm.ccContactIds || [];
+        if (!currentIds.includes(contactId)) {
+          setTemplateForm({
+            ...templateForm,
+            ccContactIds: [...currentIds, contactId],
+          });
+        }
+        setSelectedCcContactId(null);
+      } else if (field === 'bccEmail') {
+        const currentIds = templateForm.bccContactIds || [];
+        if (!currentIds.includes(contactId)) {
+          setTemplateForm({
+            ...templateForm,
+            bccContactIds: [...currentIds, contactId],
+          });
+        }
+        setSelectedBccContactId(null);
+      }
     }
   };
 
@@ -192,42 +237,33 @@ const Email: React.FC = () => {
     try {
       setError(null);
       
-      // Include any selected contact emails from dropdowns that weren't added yet
-      let finalDestinationEmail = templateForm.destinationEmail as string[] | null;
-      let finalCcEmail = templateForm.ccEmail as string[] | null;
-      let finalBccEmail = templateForm.bccEmail as string[] | null;
+      // Collect contact IDs including any selected from dropdowns
+      let finalToContactIds = [...(templateForm.toContactIds || [])];
+      let finalCcContactIds = [...(templateForm.ccContactIds || [])];
+      let finalBccContactIds = [...(templateForm.bccContactIds || [])];
       
-      // Add selected destination contact email if exists
-      if (selectedDestinationContactId) {
-        const contact = contacts.find((c) => c.id === selectedDestinationContactId);
-        if (contact && contact.email) {
-          finalDestinationEmail = addEmailToArray(finalDestinationEmail, contact.email);
-        }
+      // Add selected contact IDs from dropdowns if they exist
+      if (selectedDestinationContactId && !finalToContactIds.includes(selectedDestinationContactId)) {
+        finalToContactIds.push(selectedDestinationContactId);
       }
-      
-      // Add selected CC contact email if exists
-      if (selectedCcContactId) {
-        const contact = contacts.find((c) => c.id === selectedCcContactId);
-        if (contact && contact.email) {
-          finalCcEmail = addEmailToArray(finalCcEmail, contact.email);
-        }
+      if (selectedCcContactId && !finalCcContactIds.includes(selectedCcContactId)) {
+        finalCcContactIds.push(selectedCcContactId);
       }
-      
-      // Add selected BCC contact email if exists
-      if (selectedBccContactId) {
-        const contact = contacts.find((c) => c.id === selectedBccContactId);
-        if (contact && contact.email) {
-          finalBccEmail = addEmailToArray(finalBccEmail, contact.email);
-        }
+      if (selectedBccContactId && !finalBccContactIds.includes(selectedBccContactId)) {
+        finalBccContactIds.push(selectedBccContactId);
       }
       
       const data: CreateEmailTemplateRequest | UpdateEmailTemplateRequest = {
         ...templateForm,
         fromEmail: templateForm.fromEmail || undefined,
-        // Ensure arrays are stored as JSON arrays
-        destinationEmail: finalDestinationEmail || null,
-        ccEmail: finalCcEmail || null,
-        bccEmail: finalBccEmail || null,
+        // Only send hard-typed emails (contact emails are handled via contactIds)
+        destinationEmail: templateForm.destinationEmail || null,
+        ccEmail: templateForm.ccEmail || null,
+        bccEmail: templateForm.bccEmail || null,
+        // Send contact IDs
+        toContactIds: finalToContactIds.length > 0 ? finalToContactIds : undefined,
+        ccContactIds: finalCcContactIds.length > 0 ? finalCcContactIds : undefined,
+        bccContactIds: finalBccContactIds.length > 0 ? finalBccContactIds : undefined,
       };
       if (isEditMode && editingId) {
         const updated = await emailTemplateService.updateEmailTemplate(editingId, data as UpdateEmailTemplateRequest);
@@ -425,6 +461,37 @@ const Email: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                  {/* Display contact emails */}
+                  {(templateForm.toContactIds || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(templateForm.toContactIds || []).map((contactId) => {
+                        const contact = contacts.find(c => c.id === contactId);
+                        if (!contact || !contact.email) return null;
+                        return (
+                          <span
+                            key={contactId}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                            title="Contact email (updates automatically)"
+                          >
+                            {contact.email} (Contact)
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTemplateForm({
+                                  ...templateForm,
+                                  toContactIds: (templateForm.toContactIds || []).filter(id => id !== contactId),
+                                });
+                              }}
+                              className="text-green-600 hover:text-green-900 cursor-pointer"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Display hard-typed emails */}
                   {(templateForm.destinationEmail as string[] | null) && (templateForm.destinationEmail as string[]).length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {(templateForm.destinationEmail as string[]).map((email, index) => (
@@ -506,6 +573,37 @@ const Email: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                  {/* Display contact emails */}
+                  {(templateForm.ccContactIds || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(templateForm.ccContactIds || []).map((contactId) => {
+                        const contact = contacts.find(c => c.id === contactId);
+                        if (!contact || !contact.email) return null;
+                        return (
+                          <span
+                            key={contactId}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                            title="Contact email (updates automatically)"
+                          >
+                            {contact.email} (Contact)
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTemplateForm({
+                                  ...templateForm,
+                                  ccContactIds: (templateForm.ccContactIds || []).filter(id => id !== contactId),
+                                });
+                              }}
+                              className="text-green-600 hover:text-green-900 cursor-pointer"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Display hard-typed emails */}
                   {(templateForm.ccEmail as string[] | null) && (templateForm.ccEmail as string[]).length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {(templateForm.ccEmail as string[]).map((email, index) => (
@@ -587,6 +685,37 @@ const Email: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                  {/* Display contact emails */}
+                  {(templateForm.bccContactIds || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(templateForm.bccContactIds || []).map((contactId) => {
+                        const contact = contacts.find(c => c.id === contactId);
+                        if (!contact || !contact.email) return null;
+                        return (
+                          <span
+                            key={contactId}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                            title="Contact email (updates automatically)"
+                          >
+                            {contact.email} (Contact)
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTemplateForm({
+                                  ...templateForm,
+                                  bccContactIds: (templateForm.bccContactIds || []).filter(id => id !== contactId),
+                                });
+                              }}
+                              className="text-green-600 hover:text-green-900 cursor-pointer"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Display hard-typed emails */}
                   {(templateForm.bccEmail as string[] | null) && (templateForm.bccEmail as string[]).length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {(templateForm.bccEmail as string[]).map((email, index) => (

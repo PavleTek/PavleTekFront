@@ -409,34 +409,43 @@ export interface EmailTemplate {
   description?: string | null;
   subject?: string | null;
   content?: string | null;
-  destinationEmail?: any | null;
-  ccEmail?: any | null;
-  bccEmail?: any | null;
+  destinationEmail?: string[] | null; // Merged emails (hard-typed + contact emails)
+  ccEmail?: string[] | null; // Merged emails (hard-typed + contact emails)
+  bccEmail?: string[] | null; // Merged emails (hard-typed + contact emails)
   fromEmail?: string | null;
   createdAt: string;
   updatedAt: string;
   createdById?: number | null;
   createdBy?: User | null;
+  toContactIds?: number[]; // Contact IDs for "to"
+  ccContactIds?: number[]; // Contact IDs for "cc"
+  bccContactIds?: number[]; // Contact IDs for "bcc"
 }
 
 export interface CreateEmailTemplateRequest {
   description?: string;
   subject?: string;
   content?: string;
-  destinationEmail?: any;
-  ccEmail?: any;
-  bccEmail?: any;
+  destinationEmail?: string[]; // Only hard-typed emails
+  ccEmail?: string[]; // Only hard-typed emails
+  bccEmail?: string[]; // Only hard-typed emails
   fromEmail?: string;
+  toContactIds?: number[]; // Contact IDs for "to"
+  ccContactIds?: number[]; // Contact IDs for "cc"
+  bccContactIds?: number[]; // Contact IDs for "bcc"
 }
 
 export interface UpdateEmailTemplateRequest {
   description?: string;
   subject?: string;
   content?: string;
-  destinationEmail?: any;
-  ccEmail?: any;
-  bccEmail?: any;
+  destinationEmail?: string[]; // Only hard-typed emails
+  ccEmail?: string[]; // Only hard-typed emails
+  bccEmail?: string[]; // Only hard-typed emails
   fromEmail?: string;
+  toContactIds?: number[]; // Contact IDs for "to"
+  ccContactIds?: number[]; // Contact IDs for "cc"
+  bccContactIds?: number[]; // Contact IDs for "bcc"
 }
 
 export interface PasswordResetRequest {
@@ -466,21 +475,84 @@ export type Product = {
   sku: string;
 };
 
+export interface ASTemplateItem {
+  executedBy: string;
+  hours: number;
+  image?: string; // Base64 image data for AS document items (only for real invoices, not templates)
+}
+
+export interface CreateInvoiceRequest {
+  invoiceNumber: number;
+  date: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  isTemplate?: boolean;
+  templateName?: string;
+  name?: string; // Display name for templates
+  description?: string; // Invoice description
+  hasASDocument?: boolean;
+  ASDocument?: ASTemplateItem[];
+  sent?: boolean;
+  items?: any;
+  fromCompanyId?: number;
+  fromContactId?: number;
+  toCompanyId?: number;
+  toContactId?: number;
+  currencyId?: number;
+  emailTemplateId?: number; // Optional
+}
+
+export interface UpdateInvoiceRequest {
+  invoiceNumber?: number;
+  date?: string;
+  subtotal?: number;
+  taxRate?: number;
+  taxAmount?: number;
+  total?: number;
+  isTemplate?: boolean;
+  templateName?: string;
+  name?: string; // Display name for templates
+  description?: string; // Invoice description
+  hasASDocument?: boolean;
+  ASDocument?: ASTemplateItem[];
+  sent?: boolean;
+  items?: any;
+  fromCompanyId?: number;
+  fromContactId?: number;
+  toCompanyId?: number;
+  toContactId?: number;
+  currencyId?: number;
+  emailTemplateId?: number; // Optional
+}
+
 export type Invoice = {
+  id?: number;
   invoiceNumber: number;
   date: string;
   fromCompany?: Company;
   fromContact?: Contact;
   toCompany?: Company;
   toContact?: Contact;
-  items?: JSON;
+  items?: any;
   subtotal: number;
   taxRate: number;
-  taxAmmount: number;
+  taxAmount: number;
   total: number;
   currency?: Currency;
   isTemplate: boolean;
-  templateName: string;
+  templateName?: string | null;
+  name?: string | null; // Display name for templates
+  description?: string | null; // Invoice description
+  hasASDocument?: boolean;
+  ASDocument?: ASTemplateItem[];
   sent: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  emailTemplate?: EmailTemplate;
+  createdBy?: User;
 };
+
+export type InvoiceTemplate = Invoice & { isTemplate: true };
 

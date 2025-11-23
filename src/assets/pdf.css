@@ -5,13 +5,33 @@
   background: #ffffff;
   font-family: "Helvetica", sans-serif;
   color: #222;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 
 .pdf-content {
-  padding: 5mm;
+  padding: 0 15mm 15mm 15mm; /* left, right, bottom padding, no top padding */
   position: relative;
   color: black;
   z-index: 1;
+}
+
+/* Add top padding only to the first direct child to simulate first-page-only top padding */
+.pdf-content > *:first-child {
+  padding-top: 15mm;
+  margin-top: 0;
+}
+
+.separator-20-mm {
+  height: 15mm;
+}
+
+/* Page break for items - each item gets its own page */
+.pdf-item-page {
+  page-break-before: always;
+  break-before: page;
+  padding: 15mm;
+  min-height: 297mm;
+  width: 210mm;
+  box-sizing: border-box;
 }

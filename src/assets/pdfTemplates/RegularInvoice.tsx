@@ -15,12 +15,16 @@ export interface RegularInvoiceProps {
   fromCompanyName: string;
   companyName: string;
   companyAddress: string;
-  companyCityStateZip: string;
+  companyCity: string;
+  companyState: string;
+  companyZip: string;
   companyPhone: string;
   companyEmail: string;
   invoiceToName: string;
   invoiceToAddress: string;
-  invoiceToCityStateZip: string;
+  invoiceToCity: string;
+  invoiceToState: string;
+  invoiceToZip: string;
   invoiceToEmail: string;
   description: string;
   items: InvoiceItem[];
@@ -33,12 +37,16 @@ const RegularInvoice = React.forwardRef<HTMLDivElement, RegularInvoiceProps>(({
   fromCompanyName,
   companyName,
   companyAddress,
-  companyCityStateZip,
+  companyCity,
+  companyState,
+  companyZip,
   companyPhone,
   companyEmail,
   invoiceToName,
   invoiceToAddress,
-  invoiceToCityStateZip,
+  invoiceToCity,
+  invoiceToState,
+  invoiceToZip,
   invoiceToEmail,
   description,
   items,
@@ -82,7 +90,7 @@ const RegularInvoice = React.forwardRef<HTMLDivElement, RegularInvoiceProps>(({
           <div className="flex-column justify-self-right">
             <div className="font-bold text-lg text-right">{fromCompanyName}</div>
             <div className=" text-base text-right leading-none">{companyAddress}</div>
-            <div className=" text-base text-right leading-none">{companyCityStateZip}</div>
+            <div className=" text-base text-right leading-none">{companyCity}{companyCity && companyState ? ", " : ""}{companyState} {companyZip}</div>
             <div className=" text-base text-right leading-none">{companyPhone}</div>
             <div className=" text-base text-right leading-none">{companyEmail}</div>
           </div>
@@ -91,7 +99,7 @@ const RegularInvoice = React.forwardRef<HTMLDivElement, RegularInvoiceProps>(({
           <div className="font-bold text-lg text-left">Invoice to</div>
           <div className=" text-base text-left leading-none">{invoiceToName}</div>
           <div className=" text-base text-left leading-none">{invoiceToAddress}</div>
-          <div className=" text-base text-left leading-none">{invoiceToCityStateZip}</div>
+          <div className=" text-base text-left leading-none">{invoiceToCity}{invoiceToCity && invoiceToState ? ", " : ""}{invoiceToState} {invoiceToZip}</div>
           <div className=" text-base text-left leading-none">{invoiceToEmail}</div>
         </div>
         <div className="separator-20-mm" />

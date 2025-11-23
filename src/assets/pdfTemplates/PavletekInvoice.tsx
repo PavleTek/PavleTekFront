@@ -2,6 +2,7 @@ import React from "react";
 import logoImage from "../Transparent_Image_5.png";
 import "../invoice.css";
 import "../pdf.css";
+import type { Company, Contact } from "../../types";
 
 export interface InvoiceItem {
   quantity: number;
@@ -13,16 +14,10 @@ export interface InvoiceItem {
 export interface PavletekInvoiceProps {
   date: string;
   invoiceNumber: string;
-  companyName: string;
-  companyAddress: string;
-  companyCityStateZip: string;
-  companyPhone: string;
-  companyEmail: string;
-  invoiceToName: string;
-  invoiceToAddress: string;
-  invoiceToCityStateZip: string;
-  invoiceToEmail: string;
-  description: string;
+  fromCompany?: Company | null;
+  fromContact?: Contact | null;
+  toCompany?: Company | null;
+  toContact?: Contact | null;
   items: InvoiceItem[];
   salesTax: number; // As a decimal (e.g., 0.08 for 8%, 0 for 0%)
 }
@@ -30,19 +25,80 @@ export interface PavletekInvoiceProps {
 const PavletekInvoice = React.forwardRef<HTMLDivElement, PavletekInvoiceProps>(({
   date,
   invoiceNumber,
-  companyName,
-  companyAddress,
-  companyCityStateZip,
-  companyPhone,
-  companyEmail,
-  invoiceToName,
-  invoiceToAddress,
-  invoiceToCityStateZip,
-  invoiceToEmail,
-  description,
+  fromCompany,
+  fromContact,
+  toCompany,
+  toContact,
   items,
   salesTax,
 }, ref) => {
+  // Generate description from date: "Software development services for [Month Year] for project STRD-0004"
+  const generateDescription = (dateString: string): string => {
+    try {
+      // Parse date safely - handle MM/DD/YYYY format from toLocaleDateString
+      let dateObj: Date;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        // MM/DD/YYYY format
+        const [month, day, year] = dateString.split('/').map(Number);
+        dateObj = new Date(year, month - 1, day);
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        // YYYY-MM-DD format (ISO)
+        const [year, month, day] = dateString.split('-').map(Number);
+        dateObj = new Date(year, month - 1, day);
+      } else {
+        dateObj = new Date(dateString);
+      }
+      const month = dateObj.toLocaleString('en-US', { month: 'long' });
+      const year = dateObj.getFullYear();
+      return `Software development services for ${month} ${year} for project STRD-0004`;
+    } catch (error) {
+      // Fallback if date parsing fails
+      return "Software development services for project STRD-0004";
+    }
+  };
+
+  const description = generateDescription(date);
+
+  // Format phone number: remove all non-numbers and format as +x xxx xxx xxxx
+  const formatPhoneNumber = (phone: string | null | undefined): string => {
+    if (!phone) return "";
+    const numbersOnly = phone.replace(/\D/g, "");
+    if (numbersOnly.length === 0) return "";
+    
+    // Format as +x xxx xxx xxxx (1 digit + 3 + 3 + 4 = 11 digits total)
+    // If we have 11+ digits, use first 11. If less, format what we have.
+    const digits = numbersOnly.slice(0, 11);
+    
+    if (digits.length <= 1) {
+      return `+${digits}`;
+    } else if (digits.length <= 4) {
+      return `+${digits.slice(0, 1)} ${digits.slice(1)}`;
+    } else if (digits.length <= 7) {
+      return `+${digits.slice(0, 1)} ${digits.slice(1, 4)} ${digits.slice(4)}`;
+    } else {
+      return `+${digits.slice(0, 1)} ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+    }
+  };
+
+  // Extract from company data
+  const fromAddress = fromCompany?.address as any;
+  const companyName = "PavleTek"; // Always PavleTek
+  const companyAddress = fromAddress?.addressLine1 || "";
+  const companyCity = fromAddress?.city || "";
+  const companyState = fromAddress?.state || "";
+  const companyZip = fromAddress?.zipCode || "";
+  const companyPhone = formatPhoneNumber(fromContact?.phoneNumber);
+  const companyEmail = fromContact?.email || "";
+
+  // Extract to company data
+  const toAddress = toCompany?.address as any;
+  const invoiceToName = toCompany?.legalName || toCompany?.displayName || "";
+  const invoiceToAddress = toAddress?.addressLine1 || "";
+  const invoiceToCity = toAddress?.city || "";
+  const invoiceToState = toAddress?.state || "";
+  const invoiceToZip = toAddress?.zipCode || "";
+  const invoiceToEmail = toContact?.email || "";
+
   // Calculate subtotal from items
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
 
@@ -81,7 +137,7 @@ const PavletekInvoice = React.forwardRef<HTMLDivElement, PavletekInvoiceProps>((
           <div className="flex-column justify-self-right">
             <div className="font-bold text-lg text-right">{companyName}</div>
             <div className=" text-base text-right leading-none">{companyAddress}</div>
-            <div className=" text-base text-right leading-none">{companyCityStateZip}</div>
+            <div className=" text-base text-right leading-none">{companyCity}{companyCity && companyState ? ", " : ""}{companyState} {companyZip}</div>
             <div className=" text-base text-right leading-none">{companyPhone}</div>
             <div className=" text-base text-right leading-none">{companyEmail}</div>
           </div>
@@ -90,7 +146,7 @@ const PavletekInvoice = React.forwardRef<HTMLDivElement, PavletekInvoiceProps>((
           <div className="font-bold text-lg text-left">Invoice to</div>
           <div className=" text-base text-left leading-none">{invoiceToName}</div>
           <div className=" text-base text-left leading-none">{invoiceToAddress}</div>
-          <div className=" text-base text-left leading-none">{invoiceToCityStateZip}</div>
+          <div className=" text-base text-left leading-none">{invoiceToCity}{invoiceToCity && invoiceToState ? ", " : ""}{invoiceToState} {invoiceToZip}</div>
           <div className=" text-base text-left leading-none">{invoiceToEmail}</div>
         </div>
         <div className="separator-20-mm" />
