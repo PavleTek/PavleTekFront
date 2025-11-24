@@ -371,10 +371,11 @@ const Email: React.FC = () => {
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
-            <form onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <form autoComplete="off" onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                 <textarea
+                  autoComplete="off"
                   value={templateForm.description}
                   onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                   rows={3}
@@ -385,6 +386,7 @@ const Email: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">From Email</label>
                 <select
+                  autoComplete="off"
                   value={templateForm.fromEmail || ""}
                   onChange={(e) => setTemplateForm({ ...templateForm, fromEmail: e.target.value || undefined })}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -401,6 +403,7 @@ const Email: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={templateForm.subject}
                   onChange={(e) => setTemplateForm({ ...templateForm, subject: e.target.value })}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -413,6 +416,7 @@ const Email: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <select
+                      autoComplete="off"
                       value={selectedDestinationContactId || ""}
                       onChange={(e) => {
                         setSelectedDestinationContactId(e.target.value ? parseInt(e.target.value) : null);
@@ -441,6 +445,7 @@ const Email: React.FC = () => {
                     <div className="flex gap-2 flex-1">
                       <input
                         type="email"
+                        autoComplete="off"
                         value={destinationEmailInput}
                         onChange={(e) => setDestinationEmailInput(e.target.value)}
                         onKeyPress={(e) => {
@@ -525,6 +530,7 @@ const Email: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <select
+                      autoComplete="off"
                       value={selectedCcContactId || ""}
                       onChange={(e) => {
                         setSelectedCcContactId(e.target.value ? parseInt(e.target.value) : null);
@@ -553,6 +559,7 @@ const Email: React.FC = () => {
                     <div className="flex gap-2 flex-1">
                       <input
                         type="email"
+                        autoComplete="off"
                         value={ccEmailInput}
                         onChange={(e) => setCcEmailInput(e.target.value)}
                         onKeyPress={(e) => {
@@ -637,6 +644,7 @@ const Email: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <select
+                      autoComplete="off"
                       value={selectedBccContactId || ""}
                       onChange={(e) => {
                         setSelectedBccContactId(e.target.value ? parseInt(e.target.value) : null);
@@ -665,6 +673,7 @@ const Email: React.FC = () => {
                     <div className="flex gap-2 flex-1">
                       <input
                         type="email"
+                        autoComplete="off"
                         value={bccEmailInput}
                         onChange={(e) => setBccEmailInput(e.target.value)}
                         onKeyPress={(e) => {
@@ -746,6 +755,7 @@ const Email: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
                 <textarea
+                  autoComplete="off"
                   value={templateForm.content}
                   onChange={(e) => setTemplateForm({ ...templateForm, content: e.target.value })}
                   rows={10}

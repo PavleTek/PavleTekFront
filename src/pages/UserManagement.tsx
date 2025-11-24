@@ -433,6 +433,7 @@ const UserManagement: React.FC = () => {
               >
                 <form
                   ref={formRef}
+                  autoComplete="off"
                   className="relative flex h-full flex-col divide-y divide-gray-200 bg-white shadow-xl"
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -493,6 +494,7 @@ const UserManagement: React.FC = () => {
                                       id="username"
                                       name="username"
                                       type="text"
+                                      autoComplete="off"
                                       value={formData.username}
                                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                                       className="block w-full rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"
@@ -515,6 +517,7 @@ const UserManagement: React.FC = () => {
                                       id="email"
                                       name="email"
                                       type="email"
+                                      autoComplete="off"
                                       value={formData.email}
                                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                       className="block w-full rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"
@@ -543,6 +546,7 @@ const UserManagement: React.FC = () => {
                                       id="color"
                                       name="color"
                                       type="color"
+                                      autoComplete="off"
                                       value={formData.color}
                                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                                       className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
@@ -564,6 +568,7 @@ const UserManagement: React.FC = () => {
                                       id="first-name"
                                       name="first-name"
                                       type="text"
+                                      autoComplete="off"
                                       value={formData.name}
                                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                       className="block w-full rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"
@@ -586,6 +591,7 @@ const UserManagement: React.FC = () => {
                                       id="last-name"
                                       name="last-name"
                                       type="text"
+                                      autoComplete="off"
                                       value={formData.lastName}
                                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                                       className="block w-full rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"
@@ -608,6 +614,7 @@ const UserManagement: React.FC = () => {
                                       id="rut"
                                       name="rut"
                                       type="text"
+                                      autoComplete="off"
                                       value={formData.chileanRutNumber}
                                       onChange={(e) => setFormData({ ...formData, chileanRutNumber: e.target.value })}
                                       className="block w-full rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"
@@ -632,6 +639,7 @@ const UserManagement: React.FC = () => {
                                         id="password"
                                         name="password"
                                         type={isCreateMode ? "text" : "password"}
+                                        autoComplete="new-password"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                         className="block flex-1 rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"
@@ -660,6 +668,7 @@ const UserManagement: React.FC = () => {
                                           id="confirm-password"
                                           name="confirm-password"
                                           type="password"
+                                          autoComplete="new-password"
                                           value={formData.confirmPassword}
                                           onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                           className="block w-full rounded-md bg-white px-3 py-1.5 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600"

@@ -754,6 +754,7 @@ const ContactsAndCompanies: React.FC = () => {
     
     return (
       <form 
+        autoComplete="off"
         onSubmit={(e) => {
           e.preventDefault();
           
@@ -799,6 +800,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
           <input
             type="text"
+            autoComplete="off"
             value={contactForm.firstName}
             onChange={(e) => setContactForm({ ...contactForm, firstName: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -808,6 +810,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
           <input
             type="text"
+            autoComplete="off"
             value={contactForm.lastName}
             onChange={(e) => setContactForm({ ...contactForm, lastName: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -819,6 +822,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
           <input
             type="email"
+            autoComplete="off"
             value={contactForm.email}
             onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -828,6 +832,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
           <input
             type="text"
+            autoComplete="off"
             value={contactForm.phoneNumber}
             onChange={(e) => setContactForm({ ...contactForm, phoneNumber: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -839,6 +844,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Chilean RUT Number</label>
           <input
             type="text"
+            autoComplete="off"
             value={contactForm.chileanRutNumber}
             onChange={(e) => setContactForm({ ...contactForm, chileanRutNumber: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -848,6 +854,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Tax ID</label>
           <input
             type="text"
+            autoComplete="off"
             value={contactForm.taxID}
             onChange={(e) => setContactForm({ ...contactForm, taxID: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -858,6 +865,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
           <select
+            autoComplete="off"
             value={contactForm.countryId || ""}
             onChange={(e) => setContactForm({ ...contactForm, countryId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -873,6 +881,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
           <select
+            autoComplete="off"
             value={contactForm.languageId || ""}
             onChange={(e) => setContactForm({ ...contactForm, languageId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -888,6 +897,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
           <select
+            autoComplete="off"
             value={contactForm.currencyId || ""}
             onChange={(e) => setContactForm({ ...contactForm, currencyId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -905,6 +915,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Associated Company</label>
           <select
+            autoComplete="off"
             value={contactForm.associatedCompanyId || ""}
             onChange={(e) => setContactForm({ ...contactForm, associatedCompanyId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -921,6 +932,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Role in Company</label>
           <input
             type="text"
+            autoComplete="off"
             value={contactForm.roleInCompany}
             onChange={(e) => setContactForm({ ...contactForm, roleInCompany: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -931,6 +943,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Default Bank Account</label>
           <select
+            autoComplete="off"
             value={contactForm.defaultBankAccountId || ""}
             onChange={(e) => setContactForm({ ...contactForm, defaultBankAccountId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -947,6 +960,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
           <input
             type="color"
+            autoComplete="off"
             value={contactForm.color}
             onChange={(e) => setContactForm({ ...contactForm, color: e.target.value })}
             className="w-full h-10 rounded-md border border-gray-300"
@@ -972,6 +986,7 @@ const ContactsAndCompanies: React.FC = () => {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={contactForm.address?.addressLine1 || ""}
                 onChange={(e) => setContactForm({
                   ...contactForm,
@@ -992,6 +1007,7 @@ const ContactsAndCompanies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={contactForm.address?.city || ""}
                   onChange={(e) => setContactForm({
                     ...contactForm,
@@ -1010,6 +1026,7 @@ const ContactsAndCompanies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={contactForm.address?.state || ""}
                   onChange={(e) => setContactForm({
                     ...contactForm,
@@ -1030,6 +1047,7 @@ const ContactsAndCompanies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={contactForm.address?.zipCode || ""}
                   onChange={(e) => setContactForm({
                     ...contactForm,
@@ -1047,6 +1065,7 @@ const ContactsAndCompanies: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
                 <select
+                  autoComplete="off"
                   value={contactForm.address?.country || ""}
                   onChange={(e) => setContactForm({
                     ...contactForm,
@@ -1075,6 +1094,7 @@ const ContactsAndCompanies: React.FC = () => {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
         <textarea
+          autoComplete="off"
           value={contactForm.notes}
           onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })}
           rows={3}
@@ -1098,6 +1118,7 @@ const ContactsAndCompanies: React.FC = () => {
     
     return (
       <form 
+        autoComplete="off"
         onSubmit={(e) => {
           e.preventDefault();
           
@@ -1143,6 +1164,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
           <input
             type="text"
+            autoComplete="off"
             value={companyForm.displayName}
             onChange={(e) => setCompanyForm({ ...companyForm, displayName: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1152,6 +1174,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Legal Name</label>
           <input
             type="text"
+            autoComplete="off"
             value={companyForm.legalName}
             onChange={(e) => setCompanyForm({ ...companyForm, legalName: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1163,6 +1186,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Tax ID</label>
           <input
             type="text"
+            autoComplete="off"
             value={companyForm.taxId}
             onChange={(e) => setCompanyForm({ ...companyForm, taxId: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1172,6 +1196,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
           <input
             type="text"
+            autoComplete="off"
             value={companyForm.website}
             onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1183,6 +1208,7 @@ const ContactsAndCompanies: React.FC = () => {
         <label className="block text-sm font-medium text-gray-700 mb-2">Business Type</label>
         <input
           type="text"
+          autoComplete="off"
           value={companyForm.businessType}
           onChange={(e) => setCompanyForm({ ...companyForm, businessType: e.target.value })}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1192,6 +1218,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
           <select
+            autoComplete="off"
             value={companyForm.country || ""}
             onChange={(e) => setCompanyForm({ ...companyForm, country: e.target.value || undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1207,6 +1234,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
           <select
+            autoComplete="off"
             value={companyForm.language || ""}
             onChange={(e) => setCompanyForm({ ...companyForm, language: e.target.value || undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1222,6 +1250,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
           <select
+            autoComplete="off"
             value={companyForm.currencyId || ""}
             onChange={(e) => setCompanyForm({ ...companyForm, currencyId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1239,6 +1268,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Default Contact</label>
           <select
+            autoComplete="off"
             value={companyForm.defaultContactId || ""}
             onChange={(e) => setCompanyForm({ ...companyForm, defaultContactId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1255,6 +1285,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
           <input
             type="color"
+            autoComplete="off"
             value={companyForm.color}
             onChange={(e) => setCompanyForm({ ...companyForm, color: e.target.value })}
             className="w-full h-10 rounded-md border border-gray-300"
@@ -1280,6 +1311,7 @@ const ContactsAndCompanies: React.FC = () => {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={companyForm.address?.addressLine1 || ""}
                 onChange={(e) => setCompanyForm({
                   ...companyForm,
@@ -1300,6 +1332,7 @@ const ContactsAndCompanies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={companyForm.address?.city || ""}
                   onChange={(e) => setCompanyForm({
                     ...companyForm,
@@ -1318,6 +1351,7 @@ const ContactsAndCompanies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={companyForm.address?.state || ""}
                   onChange={(e) => setCompanyForm({
                     ...companyForm,
@@ -1338,6 +1372,7 @@ const ContactsAndCompanies: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={companyForm.address?.zipCode || ""}
                   onChange={(e) => setCompanyForm({
                     ...companyForm,
@@ -1355,6 +1390,7 @@ const ContactsAndCompanies: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
                 <select
+                  autoComplete="off"
                   value={companyForm.address?.country || ""}
                   onChange={(e) => setCompanyForm({
                     ...companyForm,
@@ -1397,6 +1433,7 @@ const ContactsAndCompanies: React.FC = () => {
     
     return (
       <form 
+        autoComplete="off"
         onSubmit={(e) => {
           e.preventDefault();
           
@@ -1442,6 +1479,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.bankName}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, bankName: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1451,6 +1489,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.accountHolder}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, accountHolder: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1462,6 +1501,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.accountNumber}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, accountNumber: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1471,6 +1511,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.accountType}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, accountType: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1482,6 +1523,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">SWIFT Code</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.swiftCode}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, swiftCode: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1491,6 +1533,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">IBAN Code</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.ibanCode}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, ibanCode: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1502,6 +1545,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Routing Number</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.routingNumber}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, routingNumber: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1511,6 +1555,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Bank Code</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.bankCode}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, bankCode: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1522,6 +1567,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Branch Name</label>
           <input
             type="text"
+            autoComplete="off"
             value={bankAccountForm.branchName}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, branchName: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1531,6 +1577,7 @@ const ContactsAndCompanies: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
           <input
             type="email"
+            autoComplete="off"
             value={bankAccountForm.email}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, email: e.target.value })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1541,6 +1588,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
           <select
+            autoComplete="off"
             value={bankAccountForm.currencyId || ""}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, currencyId: e.target.value ? parseInt(e.target.value) : undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1556,6 +1604,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
           <select
+            autoComplete="off"
             value={bankAccountForm.country || ""}
             onChange={(e) => setBankAccountForm({ ...bankAccountForm, country: e.target.value || undefined })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -1573,6 +1622,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Owner Contact</label>
           <select
+            autoComplete="off"
             value={bankAccountForm.ownerContactId || ""}
             onChange={(e) => {
               const value = e.target.value ? parseInt(e.target.value) : undefined;
@@ -1591,6 +1641,7 @@ const ContactsAndCompanies: React.FC = () => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Owner Company</label>
           <select
+            autoComplete="off"
             value={bankAccountForm.ownerCompanyId || ""}
             onChange={(e) => {
               const value = e.target.value ? parseInt(e.target.value) : undefined;
@@ -1610,6 +1661,7 @@ const ContactsAndCompanies: React.FC = () => {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
         <textarea
+          autoComplete="off"
           value={bankAccountForm.notes}
           onChange={(e) => setBankAccountForm({ ...bankAccountForm, notes: e.target.value })}
           rows={3}
