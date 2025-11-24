@@ -1023,9 +1023,68 @@ const Invoicing: React.FC = () => {
     }
   };
 
+  // Helper function to save invoice data (without auto-cancel)
+  const saveInvoiceData = async (): Promise<void> => {
+    if (!currentInvoice) {
+      throw new Error("No invoice data to save");
+    }
+
+    // Validate required fields
+    if (!currentInvoice.invoiceNumber || currentInvoice.invoiceNumber <= 0) {
+      throw new Error("Invoice number is required");
+    }
+
+    if (!currentInvoice.toCompanyId) {
+      throw new Error("To Company is required");
+    }
+
+    // Prepare ASDocument: for invoices, include hours and images
+    let ASDocument: ASItem[] | undefined = undefined;
+    if (addASDocument && asItems.length > 0) {
+      ASDocument = asItems.map(item => ({
+        executedBy: item.executedBy || "",
+        hours: item.hours || 0,
+        image: item.image, // Include image for invoices
+      }));
+    }
+
+    // Prepare the data for API call
+    const invoiceData: CreateInvoiceRequest = {
+      invoiceNumber: currentInvoice.invoiceNumber,
+      date: currentInvoice.date || new Date().toISOString().split("T")[0],
+      subtotal: currentInvoice.subtotal || 0,
+      taxRate: currentInvoice.taxRate || 0,
+      taxAmount: currentInvoice.taxAmount || 0,
+      total: currentInvoice.total || 0,
+      isTemplate: false,
+      description: currentInvoice.description || undefined,
+      hasASDocument: addASDocument && asItems.length > 0,
+      ASDocument: ASDocument,
+      items: invoiceItems,
+      fromCompanyId: currentInvoice.fromCompanyId,
+      fromContactId: currentInvoice.fromContactId,
+      toCompanyId: currentInvoice.toCompanyId,
+      toContactId: currentInvoice.toContactId,
+      currencyId: currentInvoice.currencyId,
+      emailTemplateId: currentInvoice.emailTemplateId,
+      sent: false,
+    };
+
+    await invoiceService.createInvoice(invoiceData);
+    
+    // Reload invoices
+    const invoicesResponse = await invoiceService.getAllInvoices();
+    setInvoices(invoicesResponse.invoices);
+  };
+
   // Handle sending email
   const handleSendEmail = async (emailData: SendTestEmailRequest) => {
     try {
+      setError(null);
+      
+      // Save the invoice first before sending email
+      await saveInvoiceData();
+      
       // Include attachments in email data
       const emailDataWithAttachments: SendTestEmailRequest = {
         ...emailData,
@@ -1033,13 +1092,18 @@ const Invoicing: React.FC = () => {
       };
       
       await emailService.sendTestEmail(emailDataWithAttachments);
-      setSuccess("Email sent successfully!");
+      setSuccess("Invoice saved and email sent successfully!");
       setEmailDialogOpen(false);
       setEmailAttachments([]);
       setEmailInitialData(undefined);
+      
+      // Navigate back to list after a brief delay
+      setTimeout(() => {
+        handleCancel();
+      }, 1500);
     } catch (err: any) {
-      console.error("Failed to send email:", err);
-      setError(err.response?.data?.error || err.message || "Failed to send email");
+      console.error("Failed to save invoice or send email:", err);
+      setError(err.response?.data?.error || err.message || "Failed to save invoice or send email");
       throw err;
     }
   };
@@ -1151,54 +1215,7 @@ const Invoicing: React.FC = () => {
       setError(null);
       setSuccess(null);
 
-      // Validate required fields
-      if (!currentInvoice.invoiceNumber || currentInvoice.invoiceNumber <= 0) {
-        setError("Invoice number is required");
-        return;
-      }
-
-      if (!currentInvoice.toCompanyId) {
-        setError("To Company is required");
-        return;
-      }
-
-      // Prepare ASDocument: for invoices, include hours and images
-      let ASDocument: ASItem[] | undefined = undefined;
-      if (addASDocument && asItems.length > 0) {
-        ASDocument = asItems.map(item => ({
-          executedBy: item.executedBy || "",
-          hours: item.hours || 0,
-          image: item.image, // Include image for invoices
-        }));
-      }
-
-      // Prepare the data for API call
-      const invoiceData: CreateInvoiceRequest = {
-        invoiceNumber: currentInvoice.invoiceNumber,
-        date: currentInvoice.date || new Date().toISOString().split("T")[0],
-        subtotal: currentInvoice.subtotal || 0,
-        taxRate: currentInvoice.taxRate || 0,
-        taxAmount: currentInvoice.taxAmount || 0,
-        total: currentInvoice.total || 0,
-        isTemplate: false,
-        description: currentInvoice.description || undefined,
-        hasASDocument: addASDocument && asItems.length > 0,
-        ASDocument: ASDocument,
-        items: invoiceItems,
-        fromCompanyId: currentInvoice.fromCompanyId,
-        fromContactId: currentInvoice.fromContactId,
-        toCompanyId: currentInvoice.toCompanyId,
-        toContactId: currentInvoice.toContactId,
-        currencyId: currentInvoice.currencyId,
-        emailTemplateId: currentInvoice.emailTemplateId, // Save email template ID
-        sent: false,
-      };
-
-      await invoiceService.createInvoice(invoiceData);
-      
-      // Reload invoices
-      const invoicesResponse = await invoiceService.getAllInvoices();
-      setInvoices(invoicesResponse.invoices);
+      await saveInvoiceData();
       
       // Show success message and navigate after a brief delay
       setSuccess("Invoice created successfully");
