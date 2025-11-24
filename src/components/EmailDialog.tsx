@@ -356,9 +356,16 @@ const EmailDialog: React.FC<EmailDialogProps> = ({
             {attachments && attachments.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 space-y-1">
                   {attachments.map((file, index) => (
-                    <div key={index}>{file.name}</div>
+                    <div 
+                      key={index} 
+                      className="truncate"
+                      style={{ maxWidth: '95%' }}
+                      title={file.name}
+                    >
+                      {file.name}
+                    </div>
                   ))}
                 </div>
               </div>

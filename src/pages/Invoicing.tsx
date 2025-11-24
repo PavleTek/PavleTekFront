@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, EyeIcon, ArrowDownTrayIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, EyeIcon, ArrowDownTrayIcon, EnvelopeIcon, DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 import { invoiceService } from "../services/invoiceService";
 import { emailTemplateService } from "../services/emailTemplateService";
 import { emailService } from "../services/emailService";
@@ -978,7 +978,8 @@ const Invoicing: React.FC = () => {
         const invoicePdf = await createInvoicePDF();
         if (invoicePdf) {
           const invoiceBlob = invoicePdf.output("blob");
-          const invoiceNumber = String(currentInvoice.invoiceNumber || "").padStart(5, '0');
+          // Use invoice number without leading zeros for filename (but keep zeros in PDF)
+          const invoiceNumber = String(currentInvoice.invoiceNumber || "");
           const invoiceFileName = `Invoice_${fromCompanyName}_${toCompanyName}_N${invoiceNumber}_${dateFormatted}.pdf`;
           const invoiceFile = new File([invoiceBlob], invoiceFileName, {
             type: "application/pdf",
@@ -1503,53 +1504,60 @@ const Invoicing: React.FC = () => {
           </div>
           <div className="space-y-3">
             {invoiceItems.map((item, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 rounded-md">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.quantity || ""}
-                    onChange={(e) => updateInvoiceItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
+              <div key={index} className="p-3 bg-gray-50 rounded-md space-y-2">
+                {/* First Row: Quantity and Unit Price */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.quantity || ""}
+                      onChange={(e) => updateInvoiceItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.unitPrice || ""}
+                      onChange={(e) => updateInvoiceItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
                 </div>
-                <div className="col-span-5">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                  <input
-                    type="text"
-                    value={item.description || ""}
-                    onChange={(e) => updateInvoiceItem(index, "description", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.unitPrice || ""}
-                    onChange={(e) => updateInvoiceItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.total || ""}
-                    readOnly
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-gray-100"
-                  />
-                </div>
-                <div className="col-span-1">
-                  <button
-                    onClick={() => removeInvoiceItem(index)}
-                    className="w-full px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm cursor-pointer"
-                  >
-                    ×
-                  </button>
+                {/* Second Row: Description, Total, and Remove Button */}
+                <div className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-8">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={item.description || ""}
+                      onChange={(e) => updateInvoiceItem(index, "description", e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.total || ""}
+                      readOnly
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-gray-100"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <button
+                      onClick={() => removeInvoiceItem(index)}
+                      className="w-full px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm cursor-pointer"
+                      title="Remove item"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1700,47 +1708,63 @@ const Invoicing: React.FC = () => {
           </>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium cursor-pointer"
-          >
-            Cancel
-          </button>
-          {isPavleTekCompany() && (
+        <div className="pt-4 border-t">
+          {/* Cancel button - full width on mobile */}
+          <div className="mb-3">
             <button
-              onClick={() => previewPDF("invoice")}
-              disabled={isGeneratingPreview}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleCancel}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium cursor-pointer"
             >
-              <EyeIcon className="h-5 w-5" />
-              {isGeneratingPreview ? "Generating..." : "Preview Invoice"}
+              Cancel
             </button>
-          )}
-          {addASDocument && asItems.length > 0 && (
+          </div>
+          
+          {/* Action buttons - 2 rows on mobile, single row on desktop */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-3">
+            {isPavleTekCompany() && (
+              <button
+                onClick={() => previewPDF("invoice")}
+                disabled={isGeneratingPreview}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                title={isGeneratingPreview ? "Generating..." : "Preview Invoice"}
+              >
+                <EyeIcon className="h-5 w-5" />
+                <span className="hidden sm:inline">{isGeneratingPreview ? "Generating..." : "Invoice"}</span>
+                <span className="sm:hidden">Invoice</span>
+              </button>
+            )}
+            {addASDocument && asItems.length > 0 && (
+              <button
+                onClick={() => previewPDF("as")}
+                disabled={isGeneratingPreview}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                title={isGeneratingPreview ? "Generating..." : "Preview AS"}
+              >
+                <EyeIcon className="h-5 w-5" />
+                <span className="hidden sm:inline">{isGeneratingPreview ? "Generating..." : "AS"}</span>
+                <span className="sm:hidden">AS</span>
+              </button>
+            )}
             <button
-              onClick={() => previewPDF("as")}
-              disabled={isGeneratingPreview}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleOpenEmailDialog}
+              disabled={isGeneratingEmailPdfs || !currentInvoice}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-secondary-600 text-white rounded-md hover:bg-secondary-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              title={isGeneratingEmailPdfs ? "Preparing..." : "Send Email"}
             >
-              <EyeIcon className="h-5 w-5" />
-              {isGeneratingPreview ? "Generating..." : "Preview AS"}
+              <EnvelopeIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">{isGeneratingEmailPdfs ? "Preparing..." : "Email"}</span>
+              <span className="sm:hidden">Email</span>
             </button>
-          )}
-          <button
-            onClick={handleOpenEmailDialog}
-            disabled={isGeneratingEmailPdfs || !currentInvoice}
-            className="flex items-center gap-2 px-4 py-2 bg-secondary-600 text-white rounded-md hover:bg-secondary-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <EnvelopeIcon className="h-5 w-5" />
-            {isGeneratingEmailPdfs ? "Preparing..." : "Send Email"}
-          </button>
-          <button
-            onClick={handleSaveInvoice}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium cursor-pointer"
-          >
-            Save Invoice
-          </button>
+            <button
+              onClick={handleSaveInvoice}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium cursor-pointer text-sm"
+              title="Save Invoice"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Save</span>
+              <span className="sm:hidden">Save</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1950,53 +1974,60 @@ const Invoicing: React.FC = () => {
           </div>
           <div className="space-y-3">
             {templateInvoiceItems.map((item, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 rounded-md">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.quantity || ""}
-                    onChange={(e) => updateTemplateInvoiceItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
+              <div key={index} className="p-3 bg-gray-50 rounded-md space-y-2">
+                {/* First Row: Quantity and Unit Price */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.quantity || ""}
+                      onChange={(e) => updateTemplateInvoiceItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.unitPrice || ""}
+                      onChange={(e) => updateTemplateInvoiceItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
                 </div>
-                <div className="col-span-5">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                  <input
-                    type="text"
-                    value={item.description || ""}
-                    onChange={(e) => updateTemplateInvoiceItem(index, "description", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.unitPrice || ""}
-                    onChange={(e) => updateTemplateInvoiceItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={item.total || ""}
-                    readOnly
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-gray-100"
-                  />
-                </div>
-                <div className="col-span-1">
-                  <button
-                    onClick={() => removeTemplateInvoiceItem(index)}
-                    className="w-full px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm cursor-pointer"
-                  >
-                    ×
-                  </button>
+                {/* Second Row: Description, Total, and Remove Button */}
+                <div className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-8">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={item.description || ""}
+                      onChange={(e) => updateTemplateInvoiceItem(index, "description", e.target.value)}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.total || ""}
+                      readOnly
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-gray-100"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <button
+                      onClick={() => removeTemplateInvoiceItem(index)}
+                      className="w-full px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm cursor-pointer"
+                      title="Remove item"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -2112,19 +2143,29 @@ const Invoicing: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSaveTemplate}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium cursor-pointer"
-          >
-            Save Template
-          </button>
+        <div className="pt-4 border-t">
+          {/* Cancel button - full width on mobile */}
+          <div className="mb-3">
+            <button
+              onClick={handleCancel}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+          
+          {/* Save button */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveTemplate}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium cursor-pointer text-sm"
+              title="Save Template"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Save Template</span>
+              <span className="sm:hidden">Save</span>
+            </button>
+          </div>
         </div>
       </div>
     );
