@@ -31,7 +31,7 @@ export const useInvoiceForm = () => {
 
   // Calculate totals when items or tax rate change
   useEffect(() => {
-    const subtotal = invoiceItems.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = invoiceItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const taxAmount = subtotal * (invoiceForm.taxRate / 100);
     const total = subtotal + taxAmount;
 
@@ -125,7 +125,9 @@ export const useInvoiceForm = () => {
     const updated = [...invoiceItems];
     updated[index] = { ...updated[index], [field]: value };
     if (field === "quantity" || field === "unitPrice") {
-      updated[index].total = updated[index].quantity * updated[index].unitPrice;
+      const quantity = updated[index].quantity ?? 0;
+      const unitPrice = updated[index].unitPrice ?? 0;
+      updated[index].total = quantity * unitPrice;
     }
     setInvoiceItems(updated);
   };

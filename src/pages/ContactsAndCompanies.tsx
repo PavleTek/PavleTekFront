@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, PencilIcon, TrashIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { contactService } from "../services/contactService";
 import { companyService } from "../services/companyService";
 import { bankAccountService } from "../services/bankAccountService";

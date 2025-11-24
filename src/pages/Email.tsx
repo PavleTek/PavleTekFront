@@ -38,9 +38,9 @@ const Email: React.FC = () => {
     description: "",
     subject: "",
     content: "",
-    destinationEmail: null,
-    ccEmail: null,
-    bccEmail: null,
+    destinationEmail: undefined,
+    ccEmail: undefined,
+    bccEmail: undefined,
     fromEmail: undefined,
     toContactIds: [],
     ccContactIds: [],
@@ -79,9 +79,9 @@ const Email: React.FC = () => {
       description: "",
       subject: "",
       content: "",
-      destinationEmail: null,
-      ccEmail: null,
-      bccEmail: null,
+      destinationEmail: undefined,
+      ccEmail: undefined,
+      bccEmail: undefined,
       fromEmail: undefined,
       toContactIds: [],
       ccContactIds: [],
@@ -131,9 +131,9 @@ const Email: React.FC = () => {
       description: template.description || "",
       subject: template.subject || "",
       content: template.content || "",
-      destinationEmail: hardTypedDestinationEmails.length > 0 ? hardTypedDestinationEmails : null,
-      ccEmail: hardTypedCcEmails.length > 0 ? hardTypedCcEmails : null,
-      bccEmail: hardTypedBccEmails.length > 0 ? hardTypedBccEmails : null,
+      destinationEmail: hardTypedDestinationEmails.length > 0 ? hardTypedDestinationEmails : undefined,
+      ccEmail: hardTypedCcEmails.length > 0 ? hardTypedCcEmails : undefined,
+      bccEmail: hardTypedBccEmails.length > 0 ? hardTypedBccEmails : undefined,
       fromEmail: template.fromEmail || undefined,
       toContactIds: template.toContactIds || [],
       ccContactIds: template.ccContactIds || [],
@@ -169,7 +169,7 @@ const Email: React.FC = () => {
     }
   };
 
-  const addEmailToArray = (emailArray: string[] | null, newEmail: string): string[] => {
+  const addEmailToArray = (emailArray: string[] | undefined, newEmail: string): string[] => {
     const current = emailArray || [];
     if (!current.includes(newEmail.trim())) {
       return [...current, newEmail.trim()];
@@ -177,10 +177,10 @@ const Email: React.FC = () => {
     return current;
   };
 
-  const removeEmailFromArray = (emailArray: string[] | null, emailToRemove: string): string[] | null => {
+  const removeEmailFromArray = (emailArray: string[] | undefined, emailToRemove: string): string[] | undefined => {
     const current = emailArray || [];
     const filtered = current.filter((email) => email !== emailToRemove);
-    return filtered.length > 0 ? filtered : null;
+    return filtered.length > 0 ? filtered : undefined;
   };
 
   const addContactEmail = (field: 'destinationEmail' | 'ccEmail' | 'bccEmail', contactId: number) => {
@@ -220,7 +220,7 @@ const Email: React.FC = () => {
 
   const addManualEmail = (field: 'destinationEmail' | 'ccEmail' | 'bccEmail', email: string) => {
     if (email.trim()) {
-      const currentEmails = templateForm[field] as string[] | null;
+      const currentEmails = templateForm[field] as string[] | undefined;
       setTemplateForm({
         ...templateForm,
         [field]: addEmailToArray(currentEmails, email),
@@ -257,9 +257,9 @@ const Email: React.FC = () => {
         ...templateForm,
         fromEmail: templateForm.fromEmail || undefined,
         // Only send hard-typed emails (contact emails are handled via contactIds)
-        destinationEmail: templateForm.destinationEmail || null,
-        ccEmail: templateForm.ccEmail || null,
-        bccEmail: templateForm.bccEmail || null,
+        destinationEmail: templateForm.destinationEmail || undefined,
+        ccEmail: templateForm.ccEmail || undefined,
+        bccEmail: templateForm.bccEmail || undefined,
         // Send contact IDs
         toContactIds: finalToContactIds.length > 0 ? finalToContactIds : undefined,
         ccContactIds: finalCcContactIds.length > 0 ? finalCcContactIds : undefined,
@@ -492,9 +492,9 @@ const Email: React.FC = () => {
                     </div>
                   )}
                   {/* Display hard-typed emails */}
-                  {(templateForm.destinationEmail as string[] | null) && (templateForm.destinationEmail as string[]).length > 0 && (
+                  {templateForm.destinationEmail && templateForm.destinationEmail.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(templateForm.destinationEmail as string[]).map((email, index) => (
+                      {templateForm.destinationEmail.map((email, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
@@ -505,7 +505,7 @@ const Email: React.FC = () => {
                             onClick={() => {
                               setTemplateForm({
                                 ...templateForm,
-                                destinationEmail: removeEmailFromArray(templateForm.destinationEmail as string[] | null, email),
+                                destinationEmail: removeEmailFromArray(templateForm.destinationEmail as string[] | undefined, email),
                               });
                             }}
                             className="text-primary-600 hover:text-primary-900 cursor-pointer"
@@ -604,9 +604,9 @@ const Email: React.FC = () => {
                     </div>
                   )}
                   {/* Display hard-typed emails */}
-                  {(templateForm.ccEmail as string[] | null) && (templateForm.ccEmail as string[]).length > 0 && (
+                  {templateForm.ccEmail && templateForm.ccEmail.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(templateForm.ccEmail as string[]).map((email, index) => (
+                      {templateForm.ccEmail.map((email, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
@@ -617,7 +617,7 @@ const Email: React.FC = () => {
                             onClick={() => {
                               setTemplateForm({
                                 ...templateForm,
-                                ccEmail: removeEmailFromArray(templateForm.ccEmail as string[] | null, email),
+                                ccEmail: removeEmailFromArray(templateForm.ccEmail as string[] | undefined, email),
                               });
                             }}
                             className="text-blue-600 hover:text-blue-900 cursor-pointer"
@@ -716,9 +716,9 @@ const Email: React.FC = () => {
                     </div>
                   )}
                   {/* Display hard-typed emails */}
-                  {(templateForm.bccEmail as string[] | null) && (templateForm.bccEmail as string[]).length > 0 && (
+                  {templateForm.bccEmail && templateForm.bccEmail.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(templateForm.bccEmail as string[]).map((email, index) => (
+                      {templateForm.bccEmail.map((email, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm"
@@ -729,7 +729,7 @@ const Email: React.FC = () => {
                             onClick={() => {
                               setTemplateForm({
                                 ...templateForm,
-                                bccEmail: removeEmailFromArray(templateForm.bccEmail as string[] | null, email),
+                                bccEmail: removeEmailFromArray(templateForm.bccEmail as string[] | undefined, email),
                               });
                             }}
                             className="text-gray-600 hover:text-gray-900 cursor-pointer"

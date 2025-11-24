@@ -399,15 +399,6 @@ const Invoicing: React.FC = () => {
     setTemplateAsItems(updated);
   };
 
-  const handleTemplateImageUpload = (index: number, file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      updateTemplateASItem(index, "image", base64String);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleCreateInvoice = () => {
     // Initialize new invoice form
     const newInvoice: CreateInvoiceRequest = {

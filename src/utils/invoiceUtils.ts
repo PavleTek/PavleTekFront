@@ -1,5 +1,4 @@
 import type { Invoice, InvoiceItem } from "../types";
-import PavletekInvoice from "../assets/pdfTemplates/PavletekInvoice";
 
 export const formatInvoiceNumber = (num: number): string => {
   return String(num).padStart(5, "0");
@@ -42,7 +41,12 @@ export const formatDateForFilename = (dateString: string): string => {
 };
 
 export const getInvoicePreviewDataFromInvoice = (invoice: Invoice) => {
-  const items = invoice.items && Array.isArray(invoice.items) ? invoice.items as InvoiceItem[] : [];
+  const items = invoice.items && Array.isArray(invoice.items) ? invoice.items.map(item => ({
+    quantity: item.quantity ?? 0,
+    description: item.description ?? "",
+    unitPrice: item.unitPrice ?? 0,
+    total: item.total ?? 0,
+  })) : [];
 
   return {
     date: formatDateSafe(invoice.date),
@@ -67,6 +71,13 @@ export const getInvoicePreviewData = (
   const fromContact = contacts.find((c) => c.id === invoiceForm.fromContactId);
   const toContact = contacts.find((c) => c.id === invoiceForm.toContactId);
 
+  const items = invoiceItems.map(item => ({
+    quantity: item.quantity ?? 0,
+    description: item.description ?? "",
+    unitPrice: item.unitPrice ?? 0,
+    total: item.total ?? 0,
+  }));
+
   return {
     date: invoiceForm.date ? formatDateSafe(invoiceForm.date) : "",
     invoiceNumber: formatInvoiceNumber(invoiceForm.invoiceNumber),
@@ -74,7 +85,7 @@ export const getInvoicePreviewData = (
     fromContact: fromContact || null,
     toCompany: toCompany || null,
     toContact: toContact || null,
-    items: invoiceItems,
+    items: items,
     salesTax: invoiceForm.taxRate / 100,
   };
 };

@@ -35,7 +35,6 @@ const RegularInvoice = React.forwardRef<HTMLDivElement, RegularInvoiceProps>(({
   date,
   invoiceNumber,
   fromCompanyName,
-  companyName,
   companyAddress,
   companyCity,
   companyState,
