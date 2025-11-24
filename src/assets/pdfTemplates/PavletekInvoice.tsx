@@ -91,10 +91,10 @@ const PavletekInvoice = React.forwardRef<HTMLDivElement, PavletekInvoiceProps>((
       }
       const month = dateObj.toLocaleString('en-US', { month: 'long' });
       const year = dateObj.getFullYear();
-      return `Software development services for ${month} ${year} for project STRD-0004`;
+      return `Software development services for ${month} ${year} for the project STRD-0004`;
     } catch (error) {
       // Fallback if date parsing fails
-      return "Software development services for project STRD-0004";
+      return "Software development services for the project STRD-0004";
     }
   };
 
