@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, PencilIcon, TrashIcon, PlusIcon, ClipboardIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { emailTemplateService } from "../services/emailTemplateService";
 import { emailService } from "../services/emailService";
 import { contactService } from "../services/contactService";
@@ -48,6 +48,7 @@ const Email: React.FC = () => {
   });
   
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [copiedVariable, setCopiedVariable] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -285,6 +286,18 @@ const Email: React.FC = () => {
     }
   };
 
+  const copyVariable = async (variable: string) => {
+    try {
+      await navigator.clipboard.writeText(variable);
+      setCopiedVariable(variable);
+      setTimeout(() => {
+        setCopiedVariable(null);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
   const closeDialog = () => {
     setDialogOpen(false);
     setIsEditMode(false);
@@ -293,6 +306,7 @@ const Email: React.FC = () => {
     setSelectedDestinationContactId(null);
     setSelectedCcContactId(null);
     setSelectedBccContactId(null);
+    setCopiedVariable(null);
   };
 
   return (
@@ -371,6 +385,41 @@ const Email: React.FC = () => {
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
+            
+            {/* Date Variables Section */}
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Available Date Variables</label>
+              <p className="text-xs text-gray-500 mb-3">Click on any variable to copy it to your clipboard:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { variable: "${date}", description: "Date (MM/DD/YYYY)" },
+                  { variable: "${englishMonth}", description: "English month name" },
+                  { variable: "${spanishMonth}", description: "Spanish month name" },
+                  { variable: "${year}", description: "Year (4 digits)" },
+                ].map(({ variable, description }) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    onClick={() => copyVariable(variable)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-mono text-gray-700 hover:bg-gray-50 hover:border-primary-500 transition-colors cursor-pointer"
+                    title={description}
+                  >
+                    {copiedVariable === variable ? (
+                      <>
+                        <CheckIcon className="h-4 w-4 text-green-600" />
+                        <span className="text-green-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardIcon className="h-4 w-4 text-gray-400" />
+                        <span>{variable}</span>
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <form autoComplete="off" onSubmit={handleSave} className="space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>

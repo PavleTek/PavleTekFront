@@ -14,6 +14,7 @@ import ConfirmationDialog from "../components/ConfirmationDialog";
 import type { SendTestEmailRequest } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
 import ErrorBanner from "../components/ErrorBanner";
+import { replaceDateVariables } from "../utils/emailTemplateUtils";
 import PavletekInvoice from "../assets/pdfTemplates/PavletekInvoice";
 import KibernumAS from "../assets/pdfTemplates/KibernumAS";
 import "../assets/invoice.css";
@@ -1014,8 +1015,10 @@ const Invoicing: React.FC = () => {
           // Fetch the full email template to get all merged emails
           const { emailTemplate } = await emailTemplateService.getEmailTemplateById(currentInvoice.emailTemplateId);
           
-          emailSubject = emailTemplate.subject || "";
-          emailContent = emailTemplate.content || "";
+          // Apply date variable replacement to subject and content
+          const invoiceDate = currentInvoice.date || new Date().toISOString().split("T")[0];
+          emailSubject = replaceDateVariables(emailTemplate.subject || "", invoiceDate);
+          emailContent = replaceDateVariables(emailTemplate.content || "", invoiceDate);
           emailFromEmail = emailTemplate.fromEmail || undefined;
           
           // Use merged emails from template (includes both hard-typed and contact emails)
