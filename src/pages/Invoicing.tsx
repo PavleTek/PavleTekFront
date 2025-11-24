@@ -18,7 +18,7 @@ import { replaceDateVariables } from "../utils/emailTemplateUtils";
 import PavletekInvoice from "../assets/pdfTemplates/PavletekInvoice";
 import KibernumAS from "../assets/pdfTemplates/KibernumAS";
 import "../assets/invoice.css";
-import type { Invoice, InvoiceTemplate, EmailTemplate, Company, Contact, Currency, CreateInvoiceRequest, InvoiceItem, ASItem } from "../types";
+import type { Invoice, InvoiceTemplate, EmailTemplate, Company, Contact, Currency, CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceItem, ASItem } from "../types";
 
 type ViewType = "list" | "createInvoice" | "createTemplate";
 
@@ -80,6 +80,10 @@ const Invoicing: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"invoices" | "templates">("invoices");
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState<boolean>(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<number | null>(null);
+  
+  // Editing state - track which invoice/template is being edited
+  const [editingInvoiceId, setEditingInvoiceId] = useState<number | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -466,6 +470,8 @@ const Invoicing: React.FC = () => {
     setAsItems([]);
     setAddASDocument(false);
     setSelectedTemplateId(null);
+    setEditingInvoiceId(null); // Clear editing state when creating new
+    setEditingTemplateId(null);
     setBasicInfoExpanded(true); // Expanded by default when creating new invoice
     setView("createInvoice");
   };
@@ -580,6 +586,8 @@ const Invoicing: React.FC = () => {
     setTemplateInvoiceItems([]);
     setTemplateAsItems([]);
     setTemplateAddASDocument(false);
+    setEditingInvoiceId(null); // Clear editing state when creating new
+    setEditingTemplateId(null);
     setView("createTemplate");
   };
 
@@ -608,7 +616,7 @@ const Invoicing: React.FC = () => {
       }
 
       // Prepare the data for API call
-      const templateData: CreateInvoiceRequest = {
+      const templateData: CreateInvoiceRequest | UpdateInvoiceRequest = {
         invoiceNumber: 0, // Templates don't need invoice numbers
         date: currentInvoiceTemplate.date || new Date().toISOString().split("T")[0],
         subtotal: currentInvoiceTemplate.subtotal || 0,
@@ -630,14 +638,22 @@ const Invoicing: React.FC = () => {
         sent: false,
       };
 
-      await invoiceService.createInvoice(templateData);
+      // Check if we're editing an existing template
+      if (editingTemplateId !== null) {
+        // Update existing template
+        await invoiceService.updateInvoice(editingTemplateId, templateData as UpdateInvoiceRequest);
+        setSuccess("Template updated successfully");
+      } else {
+        // Create new template
+        await invoiceService.createInvoice(templateData as CreateInvoiceRequest);
+        setSuccess("Template created successfully");
+      }
       
       // Reload templates
       const templatesResponse = await invoiceService.getAllInvoiceTemplates();
       setInvoiceTemplates(templatesResponse.invoices);
       
       // Show success message and navigate after a brief delay
-      setSuccess("Template created successfully");
       setTimeout(() => {
         handleCancel();
       }, 1500);
@@ -657,6 +673,8 @@ const Invoicing: React.FC = () => {
     setAddASDocument(false);
     setTemplateAddASDocument(false);
     setSelectedTemplateId(null);
+    setEditingInvoiceId(null); // Clear editing state
+    setEditingTemplateId(null);
     setDescriptionExpanded(false);
     setBasicInfoExpanded(true); // Reset to expanded when canceling
     setSuccess(null);
@@ -1098,7 +1116,7 @@ const Invoicing: React.FC = () => {
     }
 
     // Prepare the data for API call
-    const invoiceData: CreateInvoiceRequest = {
+    const invoiceData: CreateInvoiceRequest | UpdateInvoiceRequest = {
       invoiceNumber: currentInvoice.invoiceNumber,
       date: currentInvoice.date || new Date().toISOString().split("T")[0],
       subtotal: currentInvoice.subtotal || 0,
@@ -1119,7 +1137,14 @@ const Invoicing: React.FC = () => {
       sent: false,
     };
 
-    await invoiceService.createInvoice(invoiceData);
+    // Check if we're editing an existing invoice
+    if (editingInvoiceId !== null) {
+      // Update existing invoice
+      await invoiceService.updateInvoice(editingInvoiceId, invoiceData as UpdateInvoiceRequest);
+    } else {
+      // Create new invoice
+      await invoiceService.createInvoice(invoiceData as CreateInvoiceRequest);
+    }
     
     // Reload invoices
     const invoicesResponse = await invoiceService.getAllInvoices();
@@ -1192,6 +1217,8 @@ const Invoicing: React.FC = () => {
       setAsItems([]);
       setAddASDocument(false);
     }
+    setEditingInvoiceId(invoice.id); // Set editing ID
+    setEditingTemplateId(null); // Clear template editing ID
     setView("createInvoice");
   };
 
@@ -1227,6 +1254,8 @@ const Invoicing: React.FC = () => {
       setTemplateAsItems([]);
       setTemplateAddASDocument(false);
     }
+    setEditingTemplateId(template.id); // Set editing ID
+    setEditingInvoiceId(null); // Clear invoice editing ID
     setView("createTemplate");
   };
 
@@ -1267,7 +1296,10 @@ const Invoicing: React.FC = () => {
       await saveInvoiceData();
       
       // Show success message and navigate after a brief delay
-      setSuccess("Invoice created successfully");
+      const successMessage = editingInvoiceId !== null 
+        ? "Invoice updated successfully" 
+        : "Invoice created successfully";
+      setSuccess(successMessage);
       setTimeout(() => {
         handleCancel();
       }, 1500);
