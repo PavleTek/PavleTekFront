@@ -668,7 +668,7 @@ const Invoicing: React.FC = () => {
     }
 
     const canvas = await html2canvas(invoicePdfRef.current, {
-      scale: 2,
+      scale: 1.5, // Reduced from 2 to 1.5 for smaller file size while maintaining good quality
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
@@ -688,14 +688,16 @@ const Invoicing: React.FC = () => {
     const pdf = new jsPDF("p", "mm", "a4");
     let position = 0;
 
-    const imgData = canvas.toDataURL("image/png");
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    // Use JPEG with high quality (0.85) instead of PNG for smaller file size
+    // This maintains good visual quality while significantly reducing file size
+    const imgData = canvas.toDataURL("image/jpeg", 0.85);
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
     while (heightLeft > 5) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
 

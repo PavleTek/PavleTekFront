@@ -13,13 +13,61 @@ export interface KibernumASProps {
 }
 
 const KibernumAS = React.forwardRef<HTMLDivElement, KibernumASProps>(({ date, items }, ref) => {
+  // Format date to MM/DD/YYYY
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "";
+    
+    // Check if already in MM/DD/YYYY format
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+      return dateString;
+    }
+
+    try {
+      let dateObj: Date;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        // YYYY-MM-DD format (ISO)
+        const [year, month, day] = dateString.split('-').map(Number);
+        dateObj = new Date(year, month - 1, day);
+      } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        // MM/DD/YYYY format
+        return dateString;
+      } else {
+        // Try to parse other formats
+        dateObj = new Date(dateString);
+      }
+
+      if (isNaN(dateObj.getTime())) {
+        return dateString; // Return original if invalid date
+      }
+
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const year = dateObj.getFullYear();
+      return `${month}/${day}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return dateString; // Fallback to original string on error
+    }
+  };
+
   // Parse date and get month name
   // Handles both MM/DD/YYYY and DD/MM/YYYY formats
   const getMonthName = (dateString: string): string => {
     if (!dateString) return "";
     
     const parts = dateString.split("/");
-    if (parts.length !== 3) return "";
+    if (parts.length !== 3) {
+      // Try parsing as ISO format
+      try {
+        const dateObj = new Date(dateString);
+        if (!isNaN(dateObj.getTime())) {
+          return dateObj.toLocaleString("en-US", { month: "long" });
+        }
+      } catch {
+        return "";
+      }
+      return "";
+    }
 
     const part1 = parseInt(parts[0]);
     const part2 = parseInt(parts[1]);
@@ -42,6 +90,7 @@ const KibernumAS = React.forwardRef<HTMLDivElement, KibernumASProps>(({ date, it
     return dateObj.toLocaleString("en-US", { month: "long" });
   };
 
+  const formattedDate = formatDate(date);
   const monthName = getMonthName(date);
 
   // Calculate total hours
@@ -60,7 +109,7 @@ const KibernumAS = React.forwardRef<HTMLDivElement, KibernumASProps>(({ date, it
           </div>
           <div className="flex-column">
             <div className="text-base text-right">Dallas TX</div>
-            <div className="text-base text-right">{date}</div>
+            <div className="text-base text-right">{formattedDate}</div>
             <div className="text-base text-right">PavleTek</div>
           </div>
         </div>
