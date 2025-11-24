@@ -32,6 +32,47 @@ const PavletekInvoice = React.forwardRef<HTMLDivElement, PavletekInvoiceProps>((
   items,
   salesTax,
 }, ref) => {
+  // Format invoice number to always be 5 digits with leading zeros
+  const formatInvoiceNumber = (num: string | number): string => {
+    const numStr = typeof num === 'number' ? num.toString() : num;
+    const numValue = parseInt(numStr, 10);
+    if (isNaN(numValue)) return "00000";
+    return String(numValue).padStart(5, '0');
+  };
+
+  const formattedInvoiceNumber = formatInvoiceNumber(invoiceNumber);
+
+  // Format date to MM/DD/YYYY format
+  const formatDate = (dateString: string): string => {
+    try {
+      let dateObj: Date;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        // Already in MM/DD/YYYY format
+        return dateString;
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        // YYYY-MM-DD format (ISO)
+        const [year, month, day] = dateString.split('-').map(Number);
+        dateObj = new Date(year, month - 1, day);
+      } else {
+        dateObj = new Date(dateString);
+      }
+      
+      if (isNaN(dateObj.getTime())) {
+        return dateString; // Return original if parsing fails
+      }
+      
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const year = dateObj.getFullYear();
+      
+      return `${month}/${day}/${year}`;
+    } catch (error) {
+      return dateString; // Return original if formatting fails
+    }
+  };
+
+  const formattedDate = formatDate(date);
+
   // Generate description from date: "Software development services for [Month Year] for project STRD-0004"
   const generateDescription = (dateString: string): string => {
     try {
@@ -128,11 +169,11 @@ const PavletekInvoice = React.forwardRef<HTMLDivElement, PavletekInvoiceProps>((
         <div className="grid grid-cols-3">
           <div className="flex-column justify-self-start">
             <div className="font-bold text-lg">DATE</div>
-            <div className=" text-base">{date}</div>
+            <div className=" text-base">{formattedDate}</div>
           </div>
           <div className="flex-column justify-self-center">
             <div className="font-bold text-lg">Invoice Number</div>
-            <div className="font-semibold text-base text-center">{invoiceNumber}</div>
+            <div className="font-semibold text-base text-center">{formattedInvoiceNumber}</div>
           </div>
           <div className="flex-column justify-self-right">
             <div className="font-bold text-lg text-right">{companyName}</div>

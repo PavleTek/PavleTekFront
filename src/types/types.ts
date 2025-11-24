@@ -475,7 +475,7 @@ export type Product = {
   sku: string;
 };
 
-export interface ASTemplateItem {
+export interface ASItem {
   executedBy: string;
   hours: number;
   image?: string; // Base64 image data for AS document items (only for real invoices, not templates)
@@ -493,7 +493,7 @@ export interface CreateInvoiceRequest {
   name?: string; // Display name for templates
   description?: string; // Invoice description
   hasASDocument?: boolean;
-  ASDocument?: ASTemplateItem[];
+  ASDocument?: ASItem[];
   sent?: boolean;
   items?: any;
   fromCompanyId?: number;
@@ -516,7 +516,7 @@ export interface UpdateInvoiceRequest {
   name?: string; // Display name for templates
   description?: string; // Invoice description
   hasASDocument?: boolean;
-  ASDocument?: ASTemplateItem[];
+  ASDocument?: ASItem[];
   sent?: boolean;
   items?: any;
   fromCompanyId?: number;
@@ -528,30 +528,47 @@ export interface UpdateInvoiceRequest {
 }
 
 export type Invoice = {
-  id?: number;
+  id: number;
   invoiceNumber: number;
   date: string;
-  fromCompany?: Company;
-  fromContact?: Contact;
-  toCompany?: Company;
-  toContact?: Contact;
-  items?: any;
+  items?: InvoiceItem[];
   subtotal: number;
   taxRate: number;
   taxAmount: number;
   total: number;
-  currency?: Currency;
   isTemplate: boolean;
   templateName?: string | null;
   name?: string | null; // Display name for templates
   description?: string | null; // Invoice description
-  hasASDocument?: boolean;
-  ASDocument?: ASTemplateItem[];
+  hasASDocument: boolean;
   sent: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  emailTemplate?: EmailTemplate;
-  createdBy?: User;
+  createdAt: string;
+  updatedAt: string;
+  // Relations with IDs
+  fromCompanyId?: number | null;
+  fromContactId?: number | null;
+  toCompanyId?: number | null;
+  toContactId?: number | null;
+  currencyId?: number | null;
+  createdById?: number | null;
+  emailTemplateId?: number | null;
+  // Relations with full objects
+  fromCompany?: Company | null;
+  fromContact?: Contact | null;
+  toCompany?: Company | null;
+  toContact?: Contact | null;
+  currency?: Currency | null;
+  createdBy?: User | null;
+  emailTemplate?: EmailTemplate | null;
+  // AS Document as array of ASItems
+  ASDocument?: ASItem[] | null;
+};
+
+export type InvoiceItem = {
+  quantity?: number;
+  description?: string;
+  unitPrice?: number;
+  total?: number;
 };
 
 export type InvoiceTemplate = Invoice & { isTemplate: true };

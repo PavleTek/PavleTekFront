@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoiceService } from "../services/invoiceService";
-import type { CreateInvoiceRequest, InvoiceItem, ASTemplateItem, Invoice } from "../types";
+import type { CreateInvoiceRequest, InvoiceItem, ASItem, Invoice } from "../types";
 
 const initialForm: CreateInvoiceRequest = {
   invoiceNumber: 1,
@@ -18,7 +18,7 @@ const initialForm: CreateInvoiceRequest = {
 export const useInvoiceForm = () => {
   const [invoiceForm, setInvoiceForm] = useState<CreateInvoiceRequest>(initialForm);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-  const [asItems, setAsItems] = useState<ASTemplateItem[]>([]);
+  const [asItems, setAsItems] = useState<ASItem[]>([]);
   const [addASDocument, setAddASDocument] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<number | null>(null);
 
@@ -138,7 +138,7 @@ export const useInvoiceForm = () => {
     setAsItems(asItems.filter((_, i) => i !== index));
   };
 
-  const updateASItem = (index: number, field: keyof ASTemplateItem, value: any) => {
+  const updateASItem = (index: number, field: keyof ASItem, value: any) => {
     const updated = [...asItems];
     updated[index] = { ...updated[index], [field]: value };
     setAsItems(updated);
