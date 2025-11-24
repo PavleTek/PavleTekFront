@@ -67,7 +67,10 @@ const Invoicing: React.FC = () => {
   const [isGeneratingEmailPdfs, setIsGeneratingEmailPdfs] = useState<boolean>(false);
   const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
   const [emailInitialData, setEmailInitialData] = useState<{
+    fromEmail?: string;
     toEmails?: string[];
+    ccEmails?: string[];
+    bccEmails?: string[];
     subject?: string;
     content?: string;
   } | undefined>(undefined);
@@ -286,13 +289,59 @@ const Invoicing: React.FC = () => {
     setAsItems(updated);
   };
 
-  const handleImageUpload = (index: number, file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      updateASItem(index, "image", base64String);
-    };
-    reader.readAsDataURL(file);
+  // Helper function to compress image
+  const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Resize if larger than maxWidth
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageUpload = async (index: number, file: File) => {
+    try {
+      // Compress image before storing
+      const compressedBase64 = await compressImage(file, 1200, 0.7);
+      updateASItem(index, "image", compressedBase64);
+    } catch (error) {
+      console.error("Error compressing image:", error);
+      // Fallback to original if compression fails
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        updateASItem(index, "image", base64String);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Sync template AS items with invoice items
@@ -673,7 +722,7 @@ const Invoicing: React.FC = () => {
       
       if (pageContainers.length === 0) {
         const canvas = await html2canvas(mainContainer, {
-          scale: 2,
+          scale: 1, // Reduced from 2 to 1 for smaller file size
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
@@ -685,8 +734,9 @@ const Invoicing: React.FC = () => {
           },
         });
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+        // Use JPEG with lower quality for smaller file size
+        const imgData = canvas.toDataURL("image/jpeg", 0.7);
+        pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
         return pdf;
       }
       
@@ -700,7 +750,7 @@ const Invoicing: React.FC = () => {
         
         try {
           const canvas = await html2canvas(pageContainer, {
-            scale: 2,
+            scale: 1, // Reduced from 2 to 1 for smaller file size
             useCORS: true,
             logging: false,
             backgroundColor: "#ffffff",
@@ -722,13 +772,14 @@ const Invoicing: React.FC = () => {
           }
 
           const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          const imgData = canvas.toDataURL("image/png");
+          // Use JPEG with lower quality for smaller file size (0.7 for AS documents with images)
+          const imgData = canvas.toDataURL("image/jpeg", 0.7);
 
           if (i > 0) {
             pdf.addPage();
           }
           
-          pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+          pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
         } catch (pageError) {
           console.error(`Error capturing page ${i + 1}:`, pageError);
           pageContainer.style.display = originalDisplay;
@@ -809,6 +860,63 @@ const Invoicing: React.FC = () => {
     return name.includes("pavletek");
   };
 
+  // Helper function to sanitize company name for file names
+  const sanitizeCompanyName = (name: string | null | undefined): string => {
+    if (!name) return "Unknown";
+    // Replace spaces and special characters with underscores, remove multiple underscores
+    return name
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .trim();
+  };
+
+  // Helper function to format date as month_year (MonthName_YYYY)
+  const formatDateForFileName = (dateString: string | undefined): string => {
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    if (!dateString) {
+      const now = new Date();
+      const monthName = monthNames[now.getMonth()];
+      const year = now.getFullYear();
+      return `${monthName}_${year}`;
+    }
+
+    try {
+      let dateObj: Date;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        // YYYY-MM-DD format (ISO)
+        const [year, month, day] = dateString.split('-').map(Number);
+        dateObj = new Date(year, month - 1, day);
+      } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        // MM/DD/YYYY format
+        const [month, day, year] = dateString.split('/').map(Number);
+        dateObj = new Date(year, month - 1, day);
+      } else {
+        dateObj = new Date(dateString);
+      }
+
+      if (isNaN(dateObj.getTime())) {
+        const now = new Date();
+        const monthName = monthNames[now.getMonth()];
+        const year = now.getFullYear();
+        return `${monthName}_${year}`;
+      }
+
+      const monthName = monthNames[dateObj.getMonth()];
+      const year = dateObj.getFullYear();
+      return `${monthName}_${year}`;
+    } catch (error) {
+      const now = new Date();
+      const monthName = monthNames[now.getMonth()];
+      const year = now.getFullYear();
+      return `${monthName}_${year}`;
+    }
+  };
+
   // Handle opening email dialog
   const handleOpenEmailDialog = async () => {
     if (!currentInvoice) return;
@@ -817,6 +925,13 @@ const Invoicing: React.FC = () => {
     setError(null);
 
     try {
+      // Get company display names
+      const fromCompany = companies.find(c => c.id === currentInvoice.fromCompanyId);
+      const toCompany = companies.find(c => c.id === currentInvoice.toCompanyId);
+      const fromCompanyName = sanitizeCompanyName(fromCompany?.displayName || fromCompany?.legalName);
+      const toCompanyName = sanitizeCompanyName(toCompany?.displayName || toCompany?.legalName);
+      const dateFormatted = formatDateForFileName(currentInvoice.date);
+
       // Generate PDFs
       const attachments: File[] = [];
 
@@ -825,7 +940,9 @@ const Invoicing: React.FC = () => {
         const invoicePdf = await createInvoicePDF();
         if (invoicePdf) {
           const invoiceBlob = invoicePdf.output("blob");
-          const invoiceFile = new File([invoiceBlob], `Invoice_${String(currentInvoice.invoiceNumber || "").padStart(5, '0')}.pdf`, {
+          const invoiceNumber = String(currentInvoice.invoiceNumber || "").padStart(5, '0');
+          const invoiceFileName = `Invoice_${fromCompanyName}_${toCompanyName}_N${invoiceNumber}_${dateFormatted}.pdf`;
+          const invoiceFile = new File([invoiceBlob], invoiceFileName, {
             type: "application/pdf",
           });
           attachments.push(invoiceFile);
@@ -837,7 +954,8 @@ const Invoicing: React.FC = () => {
         const asPdf = await createASPDF();
         if (asPdf) {
           const asBlob = asPdf.output("blob");
-          const asFile = new File([asBlob], `AS_Document_${String(currentInvoice.invoiceNumber || "").padStart(5, '0')}.pdf`, {
+          const asFileName = `AS_${fromCompanyName}_${toCompanyName}_${dateFormatted}.pdf`;
+          const asFile = new File([asBlob], asFileName, {
             type: "application/pdf",
           });
           attachments.push(asFile);
@@ -847,26 +965,58 @@ const Invoicing: React.FC = () => {
       // Get email template if available
       let emailSubject = "";
       let emailContent = "";
+      let emailFromEmail: string | undefined = undefined;
+      let emailToEmails: string[] = [];
+      let emailCcEmails: string[] = [];
+      let emailBccEmails: string[] = [];
+
       if (currentInvoice.emailTemplateId) {
         try {
-          const emailTemplate = emailTemplates.find(t => t.id === currentInvoice.emailTemplateId);
-          if (emailTemplate) {
-            emailSubject = emailTemplate.subject || "";
-            emailContent = emailTemplate.content || "";
+          // Fetch the full email template to get all merged emails
+          const { emailTemplate } = await emailTemplateService.getEmailTemplateById(currentInvoice.emailTemplateId);
+          
+          emailSubject = emailTemplate.subject || "";
+          emailContent = emailTemplate.content || "";
+          emailFromEmail = emailTemplate.fromEmail || undefined;
+          
+          // Use merged emails from template (includes both hard-typed and contact emails)
+          // Handle both array and single string/null cases
+          if (emailTemplate.destinationEmail) {
+            emailToEmails = Array.isArray(emailTemplate.destinationEmail) 
+              ? emailTemplate.destinationEmail.filter((email): email is string => typeof email === 'string' && email.length > 0)
+              : typeof emailTemplate.destinationEmail === 'string' 
+                ? [emailTemplate.destinationEmail] 
+                : [];
+          }
+          
+          if (emailTemplate.ccEmail) {
+            emailCcEmails = Array.isArray(emailTemplate.ccEmail) 
+              ? emailTemplate.ccEmail.filter((email): email is string => typeof email === 'string' && email.length > 0)
+              : typeof emailTemplate.ccEmail === 'string' 
+                ? [emailTemplate.ccEmail] 
+                : [];
+          }
+          
+          if (emailTemplate.bccEmail) {
+            emailBccEmails = Array.isArray(emailTemplate.bccEmail) 
+              ? emailTemplate.bccEmail.filter((email): email is string => typeof email === 'string' && email.length > 0)
+              : typeof emailTemplate.bccEmail === 'string' 
+                ? [emailTemplate.bccEmail] 
+                : [];
           }
         } catch (err) {
           console.error("Failed to load email template:", err);
+          // Fallback: if template loading fails, don't populate template data
         }
       }
-
-      // Get recipient email from toContact
-      const toContact = contacts.find(c => c.id === currentInvoice.toContactId);
-      const toEmails = toContact?.email ? [toContact.email] : [];
 
       // Store attachments for email dialog
       setEmailAttachments(attachments);
       setEmailInitialData({
-        toEmails,
+        fromEmail: emailFromEmail,
+        toEmails: emailToEmails,
+        ccEmails: emailCcEmails.length > 0 ? emailCcEmails : undefined,
+        bccEmails: emailBccEmails.length > 0 ? emailBccEmails : undefined,
         subject: emailSubject,
         content: emailContent,
       });
