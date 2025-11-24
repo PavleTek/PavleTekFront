@@ -1505,32 +1505,35 @@ const Invoicing: React.FC = () => {
           <div className="space-y-3">
             {invoiceItems.map((item, index) => (
               <div key={index} className="p-3 bg-gray-50 rounded-md space-y-2">
-                {/* First Row: Quantity and Unit Price */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
+                {/* Mobile Row 1: Quantity, Unit Price, Total, X button */}
+                {/* Desktop: All fields in one row */}
+                <div className="grid grid-cols-4 gap-2 md:grid-cols-12 md:items-end">
+                  {/* Quantity */}
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
                     <input
                       type="number"
                       step="0.01"
                       value={item.quantity || ""}
                       onChange={(e) => updateInvoiceItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
-                  <div>
+                  {/* Unit Price */}
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
                     <input
                       type="number"
                       step="0.01"
                       value={item.unitPrice || ""}
                       onChange={(e) => updateInvoiceItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
-                </div>
-                {/* Second Row: Description, Total, and Remove Button */}
-                <div className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-8">
+                  {/* Description - Mobile: hidden in row 1, Desktop: visible */}
+                  <div className="hidden md:block md:col-span-5">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                     <input
                       type="text"
@@ -1539,7 +1542,8 @@ const Invoicing: React.FC = () => {
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
-                  <div className="col-span-3">
+                  {/* Total */}
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
                     <input
                       type="number"
@@ -1549,7 +1553,9 @@ const Invoicing: React.FC = () => {
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-gray-100"
                     />
                   </div>
-                  <div className="col-span-1">
+                  {/* Remove Button */}
+                  <div className="col-span-1 md:col-span-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 invisible">Remove</label>
                     <button
                       onClick={() => removeInvoiceItem(index)}
                       className="w-full px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm cursor-pointer"
@@ -1558,6 +1564,16 @@ const Invoicing: React.FC = () => {
                       ×
                     </button>
                   </div>
+                </div>
+                {/* Mobile Row 2: Description only */}
+                <div className="md:hidden">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={item.description || ""}
+                    onChange={(e) => updateInvoiceItem(index, "description", e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
                 </div>
               </div>
             ))}
@@ -1975,32 +1991,35 @@ const Invoicing: React.FC = () => {
           <div className="space-y-3">
             {templateInvoiceItems.map((item, index) => (
               <div key={index} className="p-3 bg-gray-50 rounded-md space-y-2">
-                {/* First Row: Quantity and Unit Price */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
+                {/* Mobile Row 1: Quantity, Unit Price, Total, X button */}
+                {/* Desktop: All fields in one row */}
+                <div className="grid grid-cols-4 gap-2 md:grid-cols-12 md:items-end">
+                  {/* Quantity */}
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
                     <input
                       type="number"
                       step="0.01"
                       value={item.quantity || ""}
                       onChange={(e) => updateTemplateInvoiceItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
-                  <div>
+                  {/* Unit Price */}
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price</label>
                     <input
                       type="number"
                       step="0.01"
                       value={item.unitPrice || ""}
                       onChange={(e) => updateTemplateInvoiceItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
-                </div>
-                {/* Second Row: Description, Total, and Remove Button */}
-                <div className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-8">
+                  {/* Description - Mobile: hidden in row 1, Desktop: visible */}
+                  <div className="hidden md:block md:col-span-5">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                     <input
                       type="text"
@@ -2009,7 +2028,8 @@ const Invoicing: React.FC = () => {
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
                   </div>
-                  <div className="col-span-3">
+                  {/* Total */}
+                  <div className="col-span-1 md:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
                     <input
                       type="number"
@@ -2019,7 +2039,9 @@ const Invoicing: React.FC = () => {
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-gray-100"
                     />
                   </div>
-                  <div className="col-span-1">
+                  {/* Remove Button */}
+                  <div className="col-span-1 md:col-span-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 invisible">Remove</label>
                     <button
                       onClick={() => removeTemplateInvoiceItem(index)}
                       className="w-full px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm cursor-pointer"
@@ -2028,6 +2050,16 @@ const Invoicing: React.FC = () => {
                       ×
                     </button>
                   </div>
+                </div>
+                {/* Mobile Row 2: Description only */}
+                <div className="md:hidden">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={item.description || ""}
+                    onChange={(e) => updateTemplateInvoiceItem(index, "description", e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
                 </div>
               </div>
             ))}
@@ -2180,7 +2212,7 @@ const Invoicing: React.FC = () => {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="sm:flex sm:items-center">
             <div className="sm:flex-auto">
-              <h1 className="text-base font-semibold text-gray-900">Invoices</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
               <p className="mt-2 text-sm text-gray-700">
                 Manage your invoices and invoice templates.
               </p>
