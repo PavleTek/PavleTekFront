@@ -289,35 +289,76 @@ const Invoicing: React.FC = () => {
     setAsItems(updated);
   };
 
-  // Helper function to compress image
-  const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.7): Promise<string> => {
+  // Helper function to compress image with file size checking
+  const compressImage = (
+    file: File, 
+    maxWidth: number = 1200, 
+    quality: number = 0.7,
+    maxFileSizeMB: number = 2
+  ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+          // If original file is very large, use more aggressive compression from the start
+          const originalSizeMB = file.size / (1024 * 1024);
+          let currentMaxWidth = maxWidth;
+          let currentQuality = quality;
 
-          // Resize if larger than maxWidth
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
+          if (originalSizeMB > 5) {
+            // Very large files (>5MB): reduce dimensions and quality more aggressively
+            currentMaxWidth = 800;
+            currentQuality = 0.5;
+          } else if (originalSizeMB > 3) {
+            // Large files (>3MB): reduce quality
+            currentMaxWidth = 1000;
+            currentQuality = 0.6;
           }
 
-          canvas.width = width;
-          canvas.height = height;
+          // Try compression with iterative quality/dimension reduction if needed
+          const tryCompress = (attemptQuality: number, attemptWidth: number): void => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
 
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
+            // Resize if larger than attemptWidth
+            if (width > attemptWidth) {
+              height = (height * attemptWidth) / width;
+              width = attemptWidth;
+            }
 
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressedBase64);
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              reject(new Error('Could not get canvas context'));
+              return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedBase64 = canvas.toDataURL('image/jpeg', attemptQuality);
+            
+            // Calculate approximate size of base64 string (base64 is ~33% larger than binary)
+            const base64SizeMB = (compressedBase64.length * 3) / (4 * 1024 * 1024);
+            
+            if (base64SizeMB <= maxFileSizeMB) {
+              // Acceptable size
+              resolve(compressedBase64);
+            } else if (attemptQuality > 0.3) {
+              // Still too large, reduce quality by 0.1
+              tryCompress(Math.max(0.3, attemptQuality - 0.1), attemptWidth);
+            } else if (attemptWidth > 400) {
+              // Quality is at minimum, reduce dimensions
+              tryCompress(0.3, Math.max(400, attemptWidth - 200));
+            } else {
+              // Minimum compression reached, accept the result
+              resolve(compressedBase64);
+            }
+          };
+
+          tryCompress(currentQuality, currentMaxWidth);
         };
         img.onerror = reject;
         img.src = e.target?.result as string;
@@ -329,18 +370,22 @@ const Invoicing: React.FC = () => {
 
   const handleImageUpload = async (index: number, file: File) => {
     try {
-      // Compress image before storing
-      const compressedBase64 = await compressImage(file, 1200, 0.7);
+      // Check file size first
+      const fileSizeMB = file.size / (1024 * 1024);
+      
+      // Compress image before storing (max 2MB target size)
+      // If original is very large, compression will be more aggressive
+      const compressedBase64 = await compressImage(file, 1200, 0.7, 2);
+      
+      // Verify final size
+      const finalSizeMB = (compressedBase64.length * 3) / (4 * 1024 * 1024);
+      console.log(`Image compressed: ${fileSizeMB.toFixed(2)}MB -> ${finalSizeMB.toFixed(2)}MB`);
+      
       updateASItem(index, "image", compressedBase64);
     } catch (error) {
       console.error("Error compressing image:", error);
-      // Fallback to original if compression fails
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        updateASItem(index, "image", base64String);
-      };
-      reader.readAsDataURL(file);
+      setError("Failed to compress image. Please try a smaller image.");
+      // Don't fallback to original if compression fails - user should try again with smaller image
     }
   };
 
