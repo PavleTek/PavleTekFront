@@ -35,3 +35,9 @@ body {
   --color-secondary-800: #193e3c;
   --color-secondary-900: #0d1f1e;
 }
+
+/* PrimeReact Dialog content padding */
+.p-dialog .p-dialog-content {
+  padding: 1.5rem;
+}
+

@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { PrimeReactProvider } from "primereact/api";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./components/DashboardLayout";
@@ -14,6 +15,7 @@ import Invoicing from "./pages/Invoicing";
 import PDFGenerator from "./pages/PDFGenerator";
 import ContactsAndCompanies from "./pages/ContactsAndCompanies";
 import Mantenedores from "./pages/mantenedores";
+import Calendar from "./pages/Calendar";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -129,6 +131,16 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "manager", "accountant"]}>
+            <DashboardLayout>
+              <Calendar />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
@@ -136,11 +148,13 @@ const AppRoutes: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <PrimeReactProvider>
+      <AuthProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
+    </PrimeReactProvider>
   );
 }
 

@@ -13,6 +13,7 @@ import {
   DocumentCurrencyDollarIcon,
   ArchiveBoxIcon,
   EnvelopeIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useAuth } from "../contexts/AuthContext";
@@ -63,6 +64,12 @@ const navigationItems: NavigationItem[] = [
     href: "/invoicing",
     allowedRoles: ["admin", "manager", "accountant"],
     icon: DocumentCurrencyDollarIcon,
+  },
+  {
+    name: "Calendar",
+    href: "/calendar",
+    icon: CalendarDaysIcon,
+    allowedRoles: ["admin", "manager", "accountant"],
   },
   {
     name: "Mantenedores",

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { XMarkIcon, EyeIcon, ArrowDownTrayIcon, EnvelopeIcon, DocumentArrowDownIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, EyeIcon, ArrowDownTrayIcon, EnvelopeIcon, DocumentArrowDownIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { invoiceService } from "../services/invoiceService";
 import { emailTemplateService } from "../services/emailTemplateService";
 import { emailService } from "../services/emailService";
@@ -10,6 +11,7 @@ import { companyService } from "../services/companyService";
 import { contactService } from "../services/contactService";
 import { currencyService } from "../services/currencyService";
 import EmailDialog from "../components/EmailDialog";
+import ScheduleSendDialog from "../components/ScheduleSendDialog";
 import ConfirmationDialog from "../components/ConfirmationDialog";
 import type { SendTestEmailRequest } from "../types";
 import SuccessBanner from "../components/SuccessBanner";
@@ -18,7 +20,7 @@ import { replaceDateVariables } from "../utils/emailTemplateUtils";
 import PavletekInvoice from "../assets/pdfTemplates/PavletekInvoice";
 import KibernumAS from "../assets/pdfTemplates/KibernumAS";
 import "../assets/invoice.css";
-import type { Invoice, InvoiceTemplate, EmailTemplate, Company, Contact, Currency, CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceItem, ASItem } from "../types";
+import type { Invoice, InvoiceTemplate, EmailTemplate, Company, Contact, Currency, CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceItem, ASItem, ScheduleSendRequest } from "../types";
 
 type ViewType = "list" | "createInvoice" | "createTemplate";
 
@@ -67,6 +69,8 @@ const Invoicing: React.FC = () => {
   const [emailDialogOpen, setEmailDialogOpen] = useState<boolean>(false);
   const [isGeneratingEmailPdfs, setIsGeneratingEmailPdfs] = useState<boolean>(false);
   const [emailAttachments, setEmailAttachments] = useState<File[]>([]);
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState<boolean>(false);
+  const [sendEmailWithStoredDocuments, setSendEmailWithStoredDocuments] = useState<boolean>(false);
   const [emailInitialData, setEmailInitialData] = useState<{
     fromEmail?: string;
     toEmails?: string[];
@@ -75,6 +79,7 @@ const Invoicing: React.FC = () => {
     subject?: string;
     content?: string;
   } | undefined>(undefined);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState<boolean>(false);
 
   // Table view state
   const [activeTab, setActiveTab] = useState<"invoices" | "templates">("invoices");
@@ -896,6 +901,24 @@ const Invoicing: React.FC = () => {
     }
   };
 
+  const previewStoredDocument = async (type: "invoice" | "as") => {
+    if (editingInvoiceId === null) return;
+    const inv = invoices.find((i) => i.id === editingInvoiceId);
+    const hasKey = type === "invoice" ? inv?.invoicePdfR2Key : inv?.asPdfR2Key;
+    if (!hasKey) return;
+    try {
+      setError(null);
+      const url = await invoiceService.getDocumentPreviewUrl(editingInvoiceId, type);
+      if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+      setPreviewPdfUrl(url);
+      setPreviewType(type);
+      setPreviewDialogOpen(true);
+    } catch (err: any) {
+      console.error("Failed to load stored document:", err);
+      setError(err.response?.data?.error || err.message || "Failed to load stored document.");
+    }
+  };
+
   const downloadFromPreview = () => {
     if (previewPdfUrl) {
       const link = document.createElement("a");
@@ -982,6 +1005,57 @@ const Invoicing: React.FC = () => {
     setError(null);
 
     try {
+      // If this invoice has documents stored in R2, open dialog without generating PDFs; send will use backend
+      const invoiceWithDocs = editingInvoiceId !== null ? invoices.find((i) => i.id === editingInvoiceId) : null;
+      if (invoiceWithDocs?.invoicePdfR2Key) {
+        setSendEmailWithStoredDocuments(true);
+        setEmailAttachments([]);
+        let emailSubject = "";
+        let emailContent = "";
+        let emailFromEmail: string | undefined = undefined;
+        let emailToEmails: string[] = [];
+        let emailCcEmails: string[] = [];
+        let emailBccEmails: string[] = [];
+        if (currentInvoice.emailTemplateId) {
+          try {
+            const { emailTemplate } = await emailTemplateService.getEmailTemplateById(currentInvoice.emailTemplateId);
+            const invoiceDate = currentInvoice.date || new Date().toISOString().split("T")[0];
+            emailSubject = replaceDateVariables(emailTemplate.subject || "", invoiceDate);
+            emailContent = replaceDateVariables(emailTemplate.content || "", invoiceDate);
+            emailFromEmail = emailTemplate.fromEmail || undefined;
+            if (emailTemplate.destinationEmail) {
+              emailToEmails = Array.isArray(emailTemplate.destinationEmail)
+                ? emailTemplate.destinationEmail.filter((e): e is string => typeof e === "string" && e.length > 0)
+                : typeof emailTemplate.destinationEmail === "string" ? [emailTemplate.destinationEmail] : [];
+            }
+            if (emailTemplate.ccEmail) {
+              emailCcEmails = Array.isArray(emailTemplate.ccEmail)
+                ? emailTemplate.ccEmail.filter((e): e is string => typeof e === "string" && e.length > 0)
+                : typeof emailTemplate.ccEmail === "string" ? [emailTemplate.ccEmail] : [];
+            }
+            if (emailTemplate.bccEmail) {
+              emailBccEmails = Array.isArray(emailTemplate.bccEmail)
+                ? emailTemplate.bccEmail.filter((e): e is string => typeof e === "string" && e.length > 0)
+                : typeof emailTemplate.bccEmail === "string" ? [emailTemplate.bccEmail] : [];
+            }
+          } catch (err) {
+            console.error("Failed to load email template:", err);
+          }
+        }
+        setEmailInitialData({
+          fromEmail: emailFromEmail,
+          toEmails: emailToEmails,
+          ccEmails: emailCcEmails.length > 0 ? emailCcEmails : undefined,
+          bccEmails: emailBccEmails.length > 0 ? emailBccEmails : undefined,
+          subject: emailSubject,
+          content: emailContent,
+        });
+        setEmailDialogOpen(true);
+        setIsGeneratingEmailPdfs(false);
+        return;
+      }
+      setSendEmailWithStoredDocuments(false);
+
       // Get company display names
       const fromCompany = companies.find(c => c.id === currentInvoice.fromCompanyId);
       const toCompany = companies.find(c => c.id === currentInvoice.toCompanyId);
@@ -1090,8 +1164,8 @@ const Invoicing: React.FC = () => {
     }
   };
 
-  // Helper function to save invoice data (without auto-cancel)
-  const saveInvoiceData = async (): Promise<void> => {
+  // Helper function to save invoice data (without auto-cancel). Returns the saved invoice.
+  const saveInvoiceData = async (): Promise<Invoice> => {
     if (!currentInvoice) {
       throw new Error("No invoice data to save");
     }
@@ -1137,41 +1211,101 @@ const Invoicing: React.FC = () => {
       sent: false,
     };
 
-    // Check if we're editing an existing invoice
+    let savedInvoice: Invoice;
     if (editingInvoiceId !== null) {
-      // Update existing invoice
-      await invoiceService.updateInvoice(editingInvoiceId, invoiceData as UpdateInvoiceRequest);
+      const { invoice } = await invoiceService.updateInvoice(editingInvoiceId, invoiceData as UpdateInvoiceRequest);
+      savedInvoice = invoice;
     } else {
-      // Create new invoice
-      await invoiceService.createInvoice(invoiceData as CreateInvoiceRequest);
+      const { invoice } = await invoiceService.createInvoice(invoiceData as CreateInvoiceRequest);
+      savedInvoice = invoice;
+      setEditingInvoiceId(invoice.id);
     }
-    
-    // Reload invoices
+
     const invoicesResponse = await invoiceService.getAllInvoices();
     setInvoices(invoicesResponse.invoices);
+    return savedInvoice;
+  };
+
+  // Generate PDFs and upload to R2 (Generate & Save Documents)
+  const handleGenerateAndSaveDocuments = async () => {
+    if (!currentInvoice) return;
+    setError(null);
+    setIsUploadingDocuments(true);
+    try {
+      const savedInvoice = await saveInvoiceData();
+      const invoicePdf = isPavleTekCompany() ? await createInvoicePDF() : null;
+      const asPdf = addASDocument && asItems.length > 0 ? await createASPDF() : null;
+      if (!invoicePdf && !asPdf) {
+        setError("No documents to save. Add invoice content and/or AS document.");
+        return;
+      }
+      const fromCompany = companies.find((c) => c.id === currentInvoice.fromCompanyId);
+      const toCompany = companies.find((c) => c.id === currentInvoice.toCompanyId);
+      const fromName = (fromCompany?.displayName || fromCompany?.legalName || "From").replace(/[^a-zA-Z0-9-_]/g, "_");
+      const toName = (toCompany?.displayName || toCompany?.legalName || "To").replace(/[^a-zA-Z0-9-_]/g, "_");
+      const dateFormatted = formatDateForFileName(currentInvoice.date || new Date().toISOString().split("T")[0]);
+      let invoicePdfFile: File | undefined;
+      let asPdfFile: File | undefined;
+      if (invoicePdf) {
+        const blob = invoicePdf.output("blob");
+        const name = `Invoice_${fromName}_${toName}_N${currentInvoice.invoiceNumber}_${dateFormatted}.pdf`;
+        invoicePdfFile = new File([blob], name, { type: "application/pdf" });
+      }
+      if (asPdf) {
+        const blob = asPdf.output("blob");
+        const name = `AS_${fromName}_${toName}_${dateFormatted}.pdf`;
+        asPdfFile = new File([blob], name, { type: "application/pdf" });
+      }
+      await invoiceService.uploadDocuments(savedInvoice.id, invoicePdfFile, asPdfFile);
+      const invoicesResponse = await invoiceService.getAllInvoices();
+      setInvoices(invoicesResponse.invoices);
+      const updated = invoicesResponse.invoices.find((i) => i.id === savedInvoice.id);
+      setSuccess(
+        updated?.documentsGeneratedAt
+          ? `Documents saved on ${new Date(updated.documentsGeneratedAt).toLocaleString()}.`
+          : "Documents saved successfully."
+      );
+    } catch (err: any) {
+      console.error("Failed to generate/save documents:", err);
+      setError(err.response?.data?.error || err.message || "Failed to save documents.");
+    } finally {
+      setIsUploadingDocuments(false);
+    }
   };
 
   // Handle sending email
   const handleSendEmail = async (emailData: SendTestEmailRequest) => {
     try {
       setError(null);
-      
-      // Save the invoice first before sending email
-      await saveInvoiceData();
-      
-      // Include attachments in email data
-      const emailDataWithAttachments: SendTestEmailRequest = {
-        ...emailData,
-        attachments: emailAttachments,
-      };
-      
-      await emailService.sendTestEmail(emailDataWithAttachments);
-      setSuccess("Invoice saved and email sent successfully!");
+
+      if (sendEmailWithStoredDocuments && editingInvoiceId !== null) {
+        await invoiceService.sendInvoiceEmail(editingInvoiceId, {
+          fromEmail: emailData.fromEmail,
+          toEmails: emailData.toEmails,
+          ccEmails: emailData.ccEmails,
+          bccEmails: emailData.bccEmails,
+          subject: emailData.subject,
+          content: emailData.content,
+        });
+        setSuccess("Email sent successfully!");
+      } else {
+        await saveInvoiceData();
+        const emailDataWithAttachments: SendTestEmailRequest = {
+          ...emailData,
+          attachments: emailAttachments,
+        };
+        await emailService.sendTestEmail(emailDataWithAttachments);
+        setSuccess("Invoice saved and email sent successfully!");
+      }
+
       setEmailDialogOpen(false);
       setEmailAttachments([]);
       setEmailInitialData(undefined);
-      
-      // Navigate back to list after a brief delay
+      setSendEmailWithStoredDocuments(false);
+
+      const invoicesResponse = await invoiceService.getAllInvoices();
+      setInvoices(invoicesResponse.invoices);
+
       setTimeout(() => {
         handleCancel();
       }, 1500);
@@ -1186,6 +1320,93 @@ const Invoicing: React.FC = () => {
     setEmailDialogOpen(false);
     setEmailAttachments([]);
     setEmailInitialData(undefined);
+    setSendEmailWithStoredDocuments(false);
+  };
+
+  const handleOpenScheduleDialog = async () => {
+    if (!currentInvoice || editingInvoiceId === null) return;
+    const invoiceWithDocs = invoices.find((i) => i.id === editingInvoiceId);
+    if (!invoiceWithDocs?.invoicePdfR2Key) {
+      setError("Generate and save documents first before scheduling send.");
+      return;
+    }
+    setError(null);
+    let emailSubject = "";
+    let emailContent = "";
+    let emailFromEmail: string | undefined = undefined;
+    let emailToEmails: string[] = [];
+    let emailCcEmails: string[] = [];
+    let emailBccEmails: string[] = [];
+    if (currentInvoice.emailTemplateId) {
+      try {
+        const { emailTemplate } = await emailTemplateService.getEmailTemplateById(currentInvoice.emailTemplateId);
+        const invoiceDate = currentInvoice.date || new Date().toISOString().split("T")[0];
+        emailSubject = replaceDateVariables(emailTemplate.subject || "", invoiceDate);
+        emailContent = replaceDateVariables(emailTemplate.content || "", invoiceDate);
+        emailFromEmail = emailTemplate.fromEmail || undefined;
+        if (emailTemplate.destinationEmail) {
+          emailToEmails = Array.isArray(emailTemplate.destinationEmail)
+            ? emailTemplate.destinationEmail.filter((e): e is string => typeof e === "string" && e.length > 0)
+            : typeof emailTemplate.destinationEmail === "string" ? [emailTemplate.destinationEmail] : [];
+        }
+        if (emailTemplate.ccEmail) {
+          emailCcEmails = Array.isArray(emailTemplate.ccEmail)
+            ? emailTemplate.ccEmail.filter((e): e is string => typeof e === "string" && e.length > 0)
+            : typeof emailTemplate.ccEmail === "string" ? [emailTemplate.ccEmail] : [];
+        }
+        if (emailTemplate.bccEmail) {
+          emailBccEmails = Array.isArray(emailTemplate.bccEmail)
+            ? emailTemplate.bccEmail.filter((e): e is string => typeof e === "string" && e.length > 0)
+            : typeof emailTemplate.bccEmail === "string" ? [emailTemplate.bccEmail] : [];
+        }
+      } catch (err) {
+        console.error("Failed to load email template:", err);
+      }
+    }
+    setEmailInitialData({
+      fromEmail: emailFromEmail,
+      toEmails: emailToEmails,
+      ccEmails: emailCcEmails.length > 0 ? emailCcEmails : undefined,
+      bccEmails: emailBccEmails.length > 0 ? emailBccEmails : undefined,
+      subject: emailSubject,
+      content: emailContent,
+    });
+    setScheduleDialogOpen(true);
+  };
+
+  const handleScheduleSend = async (data: ScheduleSendRequest) => {
+    if (editingInvoiceId === null) return;
+    await invoiceService.scheduleSend(editingInvoiceId, data);
+    setSuccess("Invoice scheduled for send successfully!");
+    setScheduleDialogOpen(false);
+    setEmailInitialData(undefined);
+    const invoicesResponse = await invoiceService.getAllInvoices();
+    setInvoices(invoicesResponse.invoices);
+  };
+
+  const closeScheduleDialog = () => {
+    setScheduleDialogOpen(false);
+    setEmailInitialData(undefined);
+  };
+
+  const handleCancelSchedule = async (invoiceId: number) => {
+    try {
+      await invoiceService.cancelSchedule(invoiceId);
+      setSuccess("Scheduled send cancelled.");
+      const invoicesResponse = await invoiceService.getAllInvoices();
+      setInvoices(invoicesResponse.invoices);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || "Failed to cancel schedule");
+    }
+  };
+
+  const formatScheduledAtChile = (utcIso: string | null | undefined) => {
+    if (!utcIso) return "";
+    return new Date(utcIso).toLocaleString("es-CL", {
+      timeZone: "America/Santiago",
+      dateStyle: "short",
+      timeStyle: "short",
+    });
   };
 
   // Handle edit invoice/template
@@ -1760,6 +1981,15 @@ const Invoicing: React.FC = () => {
         )}
 
         <div className="pt-4 border-t">
+          {/* Document status when editing an invoice with saved documents */}
+          {editingInvoiceId !== null && (() => {
+            const inv = invoices.find((i) => i.id === editingInvoiceId);
+            return inv?.documentsGeneratedAt ? (
+              <p className="mb-2 text-sm text-gray-600">
+                Documents saved on {new Date(inv.documentsGeneratedAt).toLocaleString()}.
+              </p>
+            ) : null;
+          })()}
           {/* Cancel button - full width on mobile */}
           <div className="mb-3">
             <button
@@ -1796,6 +2026,51 @@ const Invoicing: React.FC = () => {
                 <span className="sm:hidden">AS</span>
               </button>
             )}
+            {editingInvoiceId !== null && (() => {
+              const inv = invoices.find((i) => i.id === editingInvoiceId);
+              return inv?.invoicePdfR2Key ? (
+                <button
+                  type="button"
+                  onClick={() => previewStoredDocument("invoice")}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 font-medium cursor-pointer text-sm"
+                  title="Preview stored invoice PDF"
+                >
+                  <EyeIcon className="h-5 w-5" />
+                  <span className="hidden sm:inline">Stored Invoice</span>
+                  <span className="sm:hidden">Stored Inv</span>
+                </button>
+              ) : null;
+            })()}
+            {editingInvoiceId !== null && (() => {
+              const inv = invoices.find((i) => i.id === editingInvoiceId);
+              return inv?.asPdfR2Key ? (
+                <button
+                  type="button"
+                  onClick={() => previewStoredDocument("as")}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 font-medium cursor-pointer text-sm"
+                  title="Preview stored AS PDF"
+                >
+                  <EyeIcon className="h-5 w-5" />
+                  <span className="hidden sm:inline">Stored AS</span>
+                  <span className="sm:hidden">Stored AS</span>
+                </button>
+              ) : null;
+            })()}
+            {(isPavleTekCompany() || (addASDocument && asItems.length > 0)) && (
+              <button
+                type="button"
+                onClick={handleGenerateAndSaveDocuments}
+                disabled={isUploadingDocuments || !currentInvoice}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                title={isUploadingDocuments ? "Saving..." : editingInvoiceId !== null && invoices.find((i) => i.id === editingInvoiceId)?.invoicePdfR2Key ? "Re-generate and overwrite stored documents" : "Generate & Save Documents"}
+              >
+                <DocumentArrowDownIcon className="h-5 w-5" />
+                <span className="hidden sm:inline">
+                  {isUploadingDocuments ? "Saving..." : editingInvoiceId !== null && invoices.find((i) => i.id === editingInvoiceId)?.invoicePdfR2Key ? "Re-generate" : "Generate & Save"}
+                </span>
+                <span className="sm:hidden">{isUploadingDocuments ? "Saving..." : "Save Docs"}</span>
+              </button>
+            )}
             <button
               onClick={handleOpenEmailDialog}
               disabled={isGeneratingEmailPdfs || !currentInvoice}
@@ -1806,6 +2081,50 @@ const Invoicing: React.FC = () => {
               <span className="hidden sm:inline">{isGeneratingEmailPdfs ? "Preparing..." : "Email"}</span>
               <span className="sm:hidden">Email</span>
             </button>
+            {(() => {
+              const editingInvoice = editingInvoiceId !== null ? invoices.find((i) => i.id === editingInvoiceId) : null;
+              const isScheduled = editingInvoice?.scheduledStatus === "pending" && editingInvoice?.scheduledSendAt;
+              const scheduledLabel = isScheduled
+                ? formatScheduledAtChile(editingInvoice.scheduledSendAt)
+                : "";
+              return (
+                <button
+                  onClick={handleOpenScheduleDialog}
+                  disabled={
+                    isGeneratingEmailPdfs ||
+                    !currentInvoice ||
+                    editingInvoiceId === null ||
+                    !editingInvoice?.invoicePdfR2Key
+                  }
+                  className={
+                    isScheduled
+                      ? "flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      : "flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  }
+                  title={
+                    isScheduled
+                      ? `Scheduled for ${scheduledLabel} (Chile). Click to change or cancel.`
+                      : editingInvoice?.invoicePdfR2Key
+                        ? "Schedule invoice email to send at a specific time (Chile)"
+                        : "Generate and save documents first to schedule send"
+                  }
+                >
+                  {isScheduled ? (
+                    <>
+                      <CheckCircleIcon className="h-5 w-5" />
+                      <span className="hidden sm:inline">Scheduled for {scheduledLabel}</span>
+                      <span className="sm:hidden">Scheduled</span>
+                    </>
+                  ) : (
+                    <>
+                      <ClockIcon className="h-5 w-5" />
+                      <span className="hidden sm:inline">Schedule Send</span>
+                      <span className="sm:hidden">Schedule</span>
+                    </>
+                  )}
+                </button>
+              );
+            })()}
             <button
               onClick={handleSaveInvoice}
               className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium cursor-pointer text-sm"
@@ -2315,6 +2634,9 @@ const Invoicing: React.FC = () => {
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                             To Company
                           </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            Status
+                          </th>
                           <th scope="col" className="py-3.5 pr-4 pl-3 sm:pr-6 text-right">
                             <span className="sr-only">Actions</span>
                           </th>
@@ -2324,6 +2646,8 @@ const Invoicing: React.FC = () => {
                         {invoices.filter(inv => !inv.isTemplate).map((invoice) => {
                           const fromCompany = companies.find(c => c.id === invoice.fromCompanyId);
                           const toCompany = companies.find(c => c.id === invoice.toCompanyId);
+                          const hasDocs = !!invoice.invoicePdfR2Key;
+                          const docsDate = invoice.documentsGeneratedAt ? new Date(invoice.documentsGeneratedAt).toLocaleDateString() : null;
                           return (
                             <tr key={invoice.id}>
                               <td className="py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-6">
@@ -2337,6 +2661,41 @@ const Invoicing: React.FC = () => {
                               </td>
                               <td className="px-3 py-4 text-sm whitespace-nowrap text-gray-500">
                                 {toCompany?.displayName || toCompany?.legalName || "—"}
+                              </td>
+                              <td className="px-3 py-4 text-sm whitespace-nowrap">
+                                {invoice.scheduledStatus === "pending" && invoice.scheduledSendAt ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800" title={formatScheduledAtChile(invoice.scheduledSendAt)}>
+                                      <ClockIcon className="h-3.5 w-3.5" />
+                                      Scheduled: {formatScheduledAtChile(invoice.scheduledSendAt)}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelSchedule(invoice.id)}
+                                      className="text-left text-xs text-amber-700 hover:text-amber-900 cursor-pointer underline"
+                                    >
+                                      Cancel schedule
+                                    </button>
+                                  </div>
+                                ) : invoice.scheduledStatus === "sent" && invoice.scheduledSentAt ? (
+                                  <span className="inline-flex rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800" title={formatScheduledAtChile(invoice.scheduledSentAt)}>
+                                    Sent (scheduled)
+                                  </span>
+                                ) : invoice.scheduledStatus === "failed" ? (
+                                  <span className="inline-flex rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800" title={invoice.scheduledError || "Send failed"}>
+                                    Failed {invoice.scheduledError ? `: ${invoice.scheduledError}` : ""}
+                                  </span>
+                                ) : invoice.scheduledStatus === "cancelled" ? (
+                                  <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Cancelled</span>
+                                ) : invoice.sent ? (
+                                  <span className="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Sent</span>
+                                ) : hasDocs ? (
+                                  <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800" title={docsDate || undefined}>
+                                    Ready {docsDate ? `(${docsDate})` : ""}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
                               </td>
                               <td className="py-4 pr-4 pl-3 text-right text-sm font-medium whitespace-nowrap sm:pr-6">
                                 <div className="flex justify-end gap-3">
@@ -2359,7 +2718,7 @@ const Invoicing: React.FC = () => {
                         })}
                         {invoices.filter(inv => !inv.isTemplate).length === 0 && (
                           <tr>
-                            <td colSpan={5} className="py-4 text-center text-sm text-gray-500">
+                            <td colSpan={6} className="py-4 text-center text-sm text-gray-500">
                               No invoices found
                             </td>
                           </tr>
@@ -2477,6 +2836,14 @@ const Invoicing: React.FC = () => {
         initialData={emailInitialData}
         attachments={emailAttachments}
         title="Send Invoice Email"
+      />
+
+      {/* Schedule Send Dialog */}
+      <ScheduleSendDialog
+        open={scheduleDialogOpen}
+        onClose={closeScheduleDialog}
+        onSchedule={handleScheduleSend}
+        initialData={emailInitialData}
       />
 
       {/* Delete Confirmation Dialog */}

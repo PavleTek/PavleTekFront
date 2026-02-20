@@ -4,6 +4,7 @@ import type {
   InvoiceTemplate,
   CreateInvoiceRequest,
   UpdateInvoiceRequest,
+  ScheduleSendRequest,
   ApiResponse,
 } from '../types';
 
@@ -51,6 +52,66 @@ export const invoiceService = {
       `/admin/invoices/latest-number/${toCompanyId}`
     );
     return { latestInvoiceNumber: response.data.latestInvoiceNumber };
+  },
+
+  async uploadDocuments(
+    id: number,
+    invoicePdf?: File,
+    asPdf?: File
+  ): Promise<{ invoice: Invoice }> {
+    const formData = new FormData();
+    if (invoicePdf) formData.append('invoicePdf', invoicePdf);
+    if (asPdf) formData.append('asPdf', asPdf);
+    const response = await api.post<ApiResponse & { invoice: Invoice }>(
+      `/admin/invoices/${id}/documents`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return { invoice: response.data.invoice };
+  },
+
+  async getDocumentPreviewUrl(id: number, type: 'invoice' | 'as'): Promise<string> {
+    const response = await api.get(`/admin/invoices/${id}/documents/${type}`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
+  },
+
+  async deleteDocuments(id: number): Promise<void> {
+    await api.delete<ApiResponse>(`/admin/invoices/${id}/documents`);
+  },
+
+  async sendInvoiceEmail(
+    id: number,
+    data: {
+      fromEmail: string;
+      toEmails: string[];
+      ccEmails?: string[];
+      bccEmails?: string[];
+      subject: string;
+      content: string;
+    }
+  ): Promise<{ messageId: string }> {
+    const response = await api.post<ApiResponse & { messageId: string }>(
+      `/admin/invoices/${id}/send-email`,
+      data
+    );
+    return { messageId: response.data.messageId };
+  },
+
+  async scheduleSend(id: number, data: ScheduleSendRequest): Promise<{ invoice: Invoice }> {
+    const response = await api.post<ApiResponse & { invoice: Invoice }>(
+      `/admin/invoices/${id}/schedule-send`,
+      data
+    );
+    return { invoice: response.data.invoice };
+  },
+
+  async cancelSchedule(id: number): Promise<{ invoice: Invoice }> {
+    const response = await api.patch<ApiResponse & { invoice: Invoice }>(
+      `/admin/invoices/${id}/cancel-schedule`
+    );
+    return { invoice: response.data.invoice };
   },
 };
 

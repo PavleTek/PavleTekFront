@@ -74,6 +74,23 @@ export interface ApiResponse {
   [key: string]: any;
 }
 
+export interface CalendarEvent {
+  id: number;
+  title: string;
+  description?: string;
+  timestamp: string;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: number;
+}
+
+export interface CalendarColorConfig {
+  id: number;
+  colorStartDate: string;
+  colorOne: string;
+  colorTwo: string;
+}
+
 export interface EmailSender {
   id: number;
   email: string;
@@ -562,7 +579,27 @@ export type Invoice = {
   emailTemplate?: EmailTemplate | null;
   // AS Document as array of ASItems
   ASDocument?: ASItem[] | null;
+  // R2 stored document keys
+  invoicePdfR2Key?: string | null;
+  asPdfR2Key?: string | null;
+  documentsGeneratedAt?: string | null;
+  // Scheduled send
+  scheduledSendAt?: string | null;
+  scheduledStatus?: string | null; // "pending" | "sent" | "failed" | "cancelled"
+  scheduledEmailData?: Record<string, unknown> | null;
+  scheduledSentAt?: string | null;
+  scheduledError?: string | null;
 };
+
+export interface ScheduleSendRequest {
+  scheduledSendAt: string; // ISO UTC
+  fromEmail: string;
+  toEmails: string[];
+  ccEmails?: string[];
+  bccEmails?: string[];
+  subject: string;
+  content: string;
+}
 
 export type InvoiceItem = {
   quantity?: number;
