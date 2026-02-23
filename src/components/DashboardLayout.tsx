@@ -14,6 +14,7 @@ import {
   ArchiveBoxIcon,
   EnvelopeIcon,
   CalendarDaysIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useAuth } from "../contexts/AuthContext";
@@ -70,6 +71,11 @@ const navigationItems: NavigationItem[] = [
     href: "/calendar",
     icon: CalendarDaysIcon,
     allowedRoles: ["admin", "manager", "accountant"],
+  },
+  {
+    name: "Documenta",
+    href: "/documenta",
+    icon: DocumentTextIcon,
   },
   {
     name: "Mantenedores",

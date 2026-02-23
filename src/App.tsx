@@ -16,6 +16,7 @@ import PDFGenerator from "./pages/PDFGenerator";
 import ContactsAndCompanies from "./pages/ContactsAndCompanies";
 import Mantenedores from "./pages/mantenedores";
 import Calendar from "./pages/Calendar";
+import Documenta from "./pages/Documenta";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -137,6 +138,16 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute allowedRoles={["admin", "manager", "accountant"]}>
             <DashboardLayout>
               <Calendar />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documenta"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Documenta />
             </DashboardLayout>
           </ProtectedRoute>
         }
