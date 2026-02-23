@@ -167,24 +167,26 @@ const Documenta: React.FC = () => {
 
   const getPreviewStyles = (): string => {
     return `
-      .documenta-preview h1 { color: ${colors.h1}; font-size: 2em; font-weight: 700; margin: 0.67em 0; border-bottom: 2px solid ${colors.h1}20; padding-bottom: 0.3em; }
-      .documenta-preview h2 { color: ${colors.h2}; font-size: 1.5em; font-weight: 600; margin: 0.83em 0; border-bottom: 1px solid ${colors.h2}15; padding-bottom: 0.25em; }
-      .documenta-preview h3 { color: ${colors.h3}; font-size: 1.25em; font-weight: 600; margin: 1em 0; }
+      .documenta-preview { overflow-wrap: break-word; word-break: break-word; }
+      .documenta-preview * { max-width: 100%; box-sizing: border-box; }
+      .documenta-preview h1 { color: ${colors.h1}; font-size: 1.75em; font-weight: 700; margin: 0.67em 0; border-bottom: 2px solid ${colors.h1}20; padding-bottom: 0.3em; }
+      .documenta-preview h2 { color: ${colors.h2}; font-size: 1.35em; font-weight: 600; margin: 0.83em 0; border-bottom: 1px solid ${colors.h2}15; padding-bottom: 0.25em; }
+      .documenta-preview h3 { color: ${colors.h3}; font-size: 1.15em; font-weight: 600; margin: 1em 0; }
       .documenta-preview h4, .documenta-preview h5, .documenta-preview h6 { color: ${colors.h3}; font-weight: 600; margin: 1em 0; }
-      .documenta-preview p { color: ${colors.body}; line-height: 1.7; margin: 0.8em 0; }
-      .documenta-preview li { color: ${colors.body}; line-height: 1.7; }
+      .documenta-preview p { color: ${colors.body}; line-height: 1.6; margin: 0.6em 0; }
+      .documenta-preview li { color: ${colors.body}; line-height: 1.6; }
       .documenta-preview a { color: ${colors.link}; text-decoration: underline; }
-      .documenta-preview code { background-color: ${colors.codeBg}; color: ${colors.codeText}; padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; font-family: 'Courier New', Courier, monospace; }
-      .documenta-preview pre { background-color: ${colors.codeBg}; border-radius: 8px; padding: 1em; overflow-x: auto; margin: 1em 0; border: 1px solid #e0e0e0; }
-      .documenta-preview pre code { background: none; padding: 0; color: ${colors.codeText}; }
+      .documenta-preview code { background-color: ${colors.codeBg}; color: ${colors.codeText}; padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.85em; font-family: 'Courier New', Courier, monospace; }
+      .documenta-preview pre { background-color: ${colors.codeBg}; border-radius: 6px; padding: 0.8em; margin: 0.8em 0; border: 1px solid #e0e0e0; white-space: pre-wrap; word-break: break-all; overflow: hidden; }
+      .documenta-preview pre code { background: none; padding: 0; color: ${colors.codeText}; white-space: pre-wrap; word-break: break-all; }
       .documenta-preview blockquote { border-left: 4px solid ${colors.h2}; padding-left: 1em; margin: 1em 0; color: ${colors.body}99; font-style: italic; }
-      .documenta-preview table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-      .documenta-preview th { background-color: ${colors.h1}10; color: ${colors.h2}; padding: 0.75em 1em; border: 1px solid #ddd; text-align: left; font-weight: 600; }
-      .documenta-preview td { padding: 0.75em 1em; border: 1px solid #ddd; color: ${colors.body}; }
+      .documenta-preview table { border-collapse: collapse; width: 100%; margin: 0.8em 0; table-layout: fixed; }
+      .documenta-preview th { background-color: ${colors.h1}10; color: ${colors.h2}; padding: 0.4em 0.6em; border: 1px solid #ddd; text-align: left; font-weight: 600; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
+      .documenta-preview td { padding: 0.4em 0.6em; border: 1px solid #ddd; color: ${colors.body}; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
       .documenta-preview tr:nth-child(even) { background-color: #f9f9f9; }
       .documenta-preview img { max-width: 100%; height: auto; border-radius: 4px; }
-      .documenta-preview hr { border: none; border-top: 2px solid #e0e0e0; margin: 2em 0; }
-      .documenta-preview ul, .documenta-preview ol { padding-left: 2em; margin: 0.8em 0; }
+      .documenta-preview hr { border: none; border-top: 2px solid #e0e0e0; margin: 1.5em 0; }
+      .documenta-preview ul, .documenta-preview ol { padding-left: 1.5em; margin: 0.6em 0; }
       .documenta-preview strong { font-weight: 700; }
       .documenta-preview em { font-style: italic; }
     `;
@@ -213,28 +215,33 @@ const Documenta: React.FC = () => {
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
+      windowWidth: previewRef.current.scrollWidth,
+      width: previewRef.current.scrollWidth,
       onclone: (_clonedDoc, element) => {
-        if (element) convertOklchToRgb(element);
+        if (element) {
+          element.style.overflow = "hidden";
+          convertOklchToRgb(element);
+        }
       },
     });
 
-    const imgWidth = 210;
-    const pageHeight = 297;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const letterWidth = 215.9;
+    const letterHeight = 279.4;
+    const imgHeight = (canvas.height * letterWidth) / canvas.width;
     let heightLeft = imgHeight;
 
-    const pdf = new jsPDF("p", "mm", "a4");
+    const pdf = new jsPDF("p", "mm", "letter");
     let position = 0;
     const imgData = canvas.toDataURL("image/png");
 
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    pdf.addImage(imgData, "PNG", 0, position, letterWidth, imgHeight);
+    heightLeft -= letterHeight;
 
     while (heightLeft > 5) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "PNG", 0, position, letterWidth, imgHeight);
+      heightLeft -= letterHeight;
     }
 
     return pdf;
@@ -471,15 +478,16 @@ const Documenta: React.FC = () => {
               ref={previewRef}
               className="documenta-preview"
               style={{
-                width: "210mm",
-                minHeight: "297mm",
+                width: "8.5in",
+                minHeight: "11in",
                 margin: "0 auto",
-                padding: "25mm 20mm",
+                padding: "0.75in 1in",
                 backgroundColor: "#ffffff",
                 fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                fontSize: "11pt",
-                lineHeight: "1.6",
+                fontSize: "10pt",
+                lineHeight: "1.5",
                 boxSizing: "border-box",
+                overflow: "hidden",
               }}
               dangerouslySetInnerHTML={{ __html: htmlContent }}
             />
