@@ -73,7 +73,7 @@ const navigationItems: NavigationItem[] = [
     allowedRoles: ["admin", "manager", "accountant"],
   },
   {
-    name: "Documenta",
+    name: "Documents",
     href: "/documenta",
     icon: DocumentTextIcon,
   },

@@ -57,6 +57,15 @@ const COLOR_PALETTES: ColorPalette[] = [
 
 const DEFAULT_COLORS: ColorSettings = COLOR_PALETTES[0].colors;
 
+const FONT_SIZE_OPTIONS = [
+  { label: "Extra Small (8pt)", value: "8pt" },
+  { label: "Small (9pt)", value: "9pt" },
+  { label: "Medium (10pt)", value: "10pt" },
+  { label: "Large (11pt)", value: "11pt" },
+  { label: "Extra Large (12pt)", value: "12pt" },
+  { label: "Huge (14pt)", value: "14pt" },
+];
+
 const Documenta: React.FC = () => {
   const previewRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +80,7 @@ const Documenta: React.FC = () => {
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [activePalette, setActivePalette] = useState<string>("Professional");
+  const [fontSize, setFontSize] = useState<string>("10pt");
 
   useEffect(() => {
     if (markdownContent) {
@@ -207,6 +217,29 @@ const Documenta: React.FC = () => {
     allElements.forEach((el) => processEl(el as HTMLElement));
   };
 
+  const findSafeBreakPoint = (canvas: HTMLCanvasElement, idealBreak: number, pageStart: number): number => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return idealBreak;
+
+    const maxScanDistance = Math.floor((idealBreak - pageStart) * 0.2);
+
+    for (let y = idealBreak; y > idealBreak - maxScanDistance; y--) {
+      const rowData = ctx.getImageData(0, y, canvas.width, 1).data;
+      let isWhite = true;
+
+      for (let i = 0; i < rowData.length; i += 16) {
+        if (rowData[i] < 245 || rowData[i + 1] < 245 || rowData[i + 2] < 245) {
+          isWhite = false;
+          break;
+        }
+      }
+
+      if (isWhite) return y;
+    }
+
+    return idealBreak;
+  };
+
   const createPDF = async () => {
     if (!previewRef.current) return null;
 
@@ -225,23 +258,49 @@ const Documenta: React.FC = () => {
       },
     });
 
-    const letterWidth = 215.9;
-    const letterHeight = 279.4;
-    const imgHeight = (canvas.height * letterWidth) / canvas.width;
-    let heightLeft = imgHeight;
+    const letterWidthMm = 215.9;
+    const letterHeightMm = 279.4;
+    const pxPerMm = canvas.width / letterWidthMm;
+    const pageHeightPx = Math.floor(letterHeightMm * pxPerMm);
+    const totalHeight = canvas.height;
 
     const pdf = new jsPDF("p", "mm", "letter");
-    let position = 0;
-    const imgData = canvas.toDataURL("image/png");
 
-    pdf.addImage(imgData, "PNG", 0, position, letterWidth, imgHeight);
-    heightLeft -= letterHeight;
+    if (totalHeight <= pageHeightPx) {
+      const imgHeight = (totalHeight * letterWidthMm) / canvas.width;
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, letterWidthMm, imgHeight);
+      return pdf;
+    }
 
-    while (heightLeft > 5) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, letterWidth, imgHeight);
-      heightLeft -= letterHeight;
+    let currentY = 0;
+    let pageIndex = 0;
+
+    while (currentY < totalHeight) {
+      let nextBreak = currentY + pageHeightPx;
+
+      if (nextBreak >= totalHeight) {
+        nextBreak = totalHeight;
+      } else {
+        nextBreak = findSafeBreakPoint(canvas, nextBreak, currentY);
+      }
+
+      const sliceHeight = nextBreak - currentY;
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = pageHeightPx;
+      const ctx = pageCanvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(canvas, 0, currentY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+
+      const pageImgData = pageCanvas.toDataURL("image/png");
+
+      if (pageIndex > 0) pdf.addPage();
+      pdf.addImage(pageImgData, "PNG", 0, 0, letterWidthMm, letterHeightMm);
+
+      currentY = nextBreak;
+      pageIndex++;
     }
 
     return pdf;
@@ -315,7 +374,7 @@ const Documenta: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Documenta</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
           <p className="mt-1 text-sm text-gray-500">Convert Markdown files to beautifully styled PDFs</p>
         </div>
         <div className="flex gap-3">
@@ -392,18 +451,36 @@ const Documenta: React.FC = () => {
         )}
       </div>
 
-      {/* Document Title */}
+      {/* Document Settings */}
       {htmlContent && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Title</h2>
-          <input
-            type="text"
-            value={documentTitle}
-            onChange={(e) => setDocumentTitle(e.target.value)}
-            placeholder="Enter the PDF file name..."
-            className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
-          <p className="mt-2 text-xs text-gray-400">This will be the downloaded file name: <strong>{documentTitle || "document"}.pdf</strong></p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Settings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Document Title</label>
+              <input
+                type="text"
+                value={documentTitle}
+                onChange={(e) => setDocumentTitle(e.target.value)}
+                placeholder="Enter the PDF file name..."
+                className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+              <p className="mt-1.5 text-xs text-gray-400">File name: <strong>{documentTitle || "document"}.pdf</strong></p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+              <select
+                value={fontSize}
+                onChange={(e) => setFontSize(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer"
+              >
+                {FONT_SIZE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-gray-400">Affects body text, headings scale proportionally</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -484,7 +561,7 @@ const Documenta: React.FC = () => {
                 padding: "0.75in 1in",
                 backgroundColor: "#ffffff",
                 fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                fontSize: "10pt",
+                fontSize: fontSize,
                 lineHeight: "1.5",
                 boxSizing: "border-box",
                 overflow: "hidden",
