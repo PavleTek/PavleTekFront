@@ -11,7 +11,20 @@ import {
   ArrowUpTrayIcon,
   TrashIcon,
   SwatchIcon,
+  CloudArrowUpIcon,
+  FolderIcon,
+  MagnifyingGlassIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { InputText } from 'primereact/inputtext';
+import { Menu } from 'primereact/menu';
+import { strideDocService } from "../services/strideDocService";
+import type { StrideDocument } from "../types";
+import SuccessBanner from "../components/SuccessBanner";
+import ErrorBanner from "../components/ErrorBanner";
+import ConfirmationDialog from "../components/ConfirmationDialog";
 
 interface ColorSettings {
   h1: string;
@@ -81,6 +94,150 @@ const Documenta: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [activePalette, setActivePalette] = useState<string>("Professional");
   const [fontSize, setFontSize] = useState<string>("10pt");
+
+  // StrideDoc states
+  const [activeTab, setActiveTab] = useState<'generate' | 'list'>('generate');
+  const [documents, setDocuments] = useState<StrideDocument[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [globalFilterValue, setGlobalFilterValue] = useState<string>('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
+  const [docToDelete, setDocToDelete] = useState<StrideDocument | null>(null);
+  const menuRef = useRef<Menu>(null);
+  const [selectedDocForMenu, setSelectedDocForMenu] = useState<StrideDocument | null>(null);
+
+  const actionMenuItems = [
+    {
+      label: 'Download PDF',
+      icon: 'pi pi-file-pdf',
+      template: (item: any, options: any) => {
+        return (
+          <button 
+            onClick={(e) => options.onClick(e)} 
+            className={`${options.className} flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 transition-colors cursor-pointer`}
+          >
+            <ArrowDownTrayIcon className="h-4 w-4 text-primary-600" />
+            <span className="text-sm font-medium text-gray-700">{item.label}</span>
+          </button>
+        );
+      },
+      command: () => {
+        if (selectedDocForMenu) {
+          strideDocService.downloadFile(selectedDocForMenu.id, 'pdf', selectedDocForMenu.name);
+        }
+      }
+    },
+    {
+      label: 'Download Markdown',
+      icon: 'pi pi-file-edit',
+      template: (item: any, options: any) => {
+        return (
+          <button 
+            onClick={(e) => options.onClick(e)} 
+            className={`${options.className} flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 transition-colors cursor-pointer`}
+          >
+            <DocumentTextIcon className="h-4 w-4 text-secondary-600" />
+            <span className="text-sm font-medium text-gray-700">{item.label}</span>
+          </button>
+        );
+      },
+      command: () => {
+        if (selectedDocForMenu) {
+          strideDocService.downloadFile(selectedDocForMenu.id, 'md', selectedDocForMenu.name);
+        }
+      }
+    },
+    {
+      separator: true,
+      template: () => <div className="border-t border-gray-100 my-1" />
+    },
+    {
+      label: 'Delete',
+      icon: 'pi pi-trash',
+      template: (item: any, options: any) => {
+        return (
+          <button 
+            onClick={(e) => options.onClick(e)} 
+            className={`${options.className} flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-red-50 transition-colors cursor-pointer`}
+          >
+            <TrashIcon className="h-4 w-4 text-red-600" />
+            <span className="text-sm font-medium text-red-600">{item.label}</span>
+          </button>
+        );
+      },
+      command: () => {
+        if (selectedDocForMenu) {
+          setDocToDelete(selectedDocForMenu);
+          setDeleteConfirmOpen(true);
+        }
+      }
+    }
+  ];
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    setLoadingDocs(true);
+    try {
+      const response = await strideDocService.getAll();
+      setDocuments(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to fetch documents");
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  const saveToCloud = async () => {
+    if (!markdownContent || !documentTitle) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const pdf = await createPDF();
+      if (!pdf) throw new Error("Failed to generate PDF");
+      
+      const pdfBlob = pdf.output("blob");
+      const mdBlob = new Blob([markdownContent], { type: 'text/markdown' });
+      
+      const formData = new FormData();
+      formData.append('name', documentTitle);
+      formData.append('mdFile', mdBlob, `${documentTitle}.md`);
+      formData.append('pdfFile', pdfBlob, `${documentTitle}.pdf`);
+      
+      await strideDocService.create(formData);
+      setSuccess("Document saved to StrideDoc successfully");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to save document to cloud");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!docToDelete) return;
+    try {
+      await strideDocService.deleteDocument(docToDelete.id);
+      setSuccess("Document deleted successfully");
+      fetchDocuments();
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to delete document");
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDocToDelete(null);
+    }
+  };
+
+  const formatSize = (bytes: number | null | undefined) => {
+    if (bytes === null || bytes === undefined) return "0 B";
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   useEffect(() => {
     if (markdownContent) {
@@ -244,7 +401,7 @@ const Documenta: React.FC = () => {
     if (!previewRef.current) return null;
 
     const canvas = await html2canvas(previewRef.current, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
@@ -268,8 +425,8 @@ const Documenta: React.FC = () => {
 
     if (totalHeight <= pageHeightPx) {
       const imgHeight = (totalHeight * letterWidthMm) / canvas.width;
-      const imgData = canvas.toDataURL("image/png");
-      pdf.addImage(imgData, "PNG", 0, 0, letterWidthMm, imgHeight);
+      const imgData = canvas.toDataURL("image/jpeg", 0.75);
+      pdf.addImage(imgData, "JPEG", 0, 0, letterWidthMm, imgHeight);
       return pdf;
     }
 
@@ -294,10 +451,10 @@ const Documenta: React.FC = () => {
       ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
       ctx.drawImage(canvas, 0, currentY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
 
-      const pageImgData = pageCanvas.toDataURL("image/png");
+      const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.75);
 
       if (pageIndex > 0) pdf.addPage();
-      pdf.addImage(pageImgData, "PNG", 0, 0, letterWidthMm, letterHeightMm);
+      pdf.addImage(pageImgData, "JPEG", 0, 0, letterWidthMm, letterHeightMm);
 
       currentY = nextBreak;
       pageIndex++;
@@ -371,206 +528,381 @@ const Documenta: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Banners */}
+      {success && <SuccessBanner message={success} onDismiss={() => setSuccess(null)} />}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-          <p className="mt-1 text-sm text-gray-500">Convert Markdown files to beautifully styled PDFs</p>
+          <p className="mt-1 text-sm text-gray-500">Convert Markdown files to beautifully styled PDFs and store them</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={previewPDF}
-            disabled={isGenerating || !htmlContent}
-            className="flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          >
-            <EyeIcon className="h-5 w-5" />
-            {isGenerating ? "Generating..." : "Preview PDF"}
-          </button>
-          <button
-            onClick={downloadPDF}
-            disabled={isGenerating || !htmlContent}
-            className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            {isGenerating ? "Generating..." : "Download PDF"}
-          </button>
-        </div>
-      </div>
-
-      {/* File Upload Area */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <ArrowUpTrayIcon className="h-5 w-5" />
-          Upload Markdown File
-        </h2>
-        {!fileName ? (
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`
-              border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer
-              ${isDragOver ? "border-primary-500 bg-primary-50 scale-[1.01]" : "border-gray-300 hover:border-primary-400 hover:bg-gray-50"}
-            `}
-          >
-            <DocumentTextIcon className={`h-16 w-16 mx-auto mb-4 ${isDragOver ? "text-primary-500" : "text-gray-400"}`} />
-            <p className="text-lg font-medium text-gray-700 mb-1">
-              {isDragOver ? "Drop your file here" : "Drag & drop your .md file here"}
-            </p>
-            <p className="text-sm text-gray-500 mb-4">or click to browse files</p>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer">
-              <ArrowUpTrayIcon className="h-4 w-4" />
-              Choose File
-            </span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".md,.markdown"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
-        ) : (
-          <div className="flex items-center justify-between p-4 bg-primary-50 border border-primary-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <DocumentTextIcon className="h-8 w-8 text-primary-600" />
-              <div>
-                <p className="font-medium text-gray-900">{fileName}</p>
-                <p className="text-sm text-gray-500">{markdownContent.length} characters</p>
-              </div>
-            </div>
+        
+        {activeTab === 'generate' && (
+          <div className="flex gap-3">
             <button
-              onClick={clearFile}
-              className="flex items-center gap-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+              onClick={previewPDF}
+              disabled={isGenerating || !htmlContent}
+              className="flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              <TrashIcon className="h-4 w-4" />
-              Remove
+              <EyeIcon className="h-5 w-5" />
+              {isGenerating ? "Generating..." : "Preview PDF"}
+            </button>
+            <button
+              onClick={saveToCloud}
+              disabled={isSaving || isGenerating || !htmlContent || !documentTitle}
+              className="flex items-center justify-center gap-2 bg-secondary-600 text-white px-4 py-2 rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              <CloudArrowUpIcon className="h-5 w-5" />
+              {isSaving ? "Saving..." : "Save to Cloud"}
+            </button>
+            <button
+              onClick={downloadPDF}
+              disabled={isGenerating || !htmlContent}
+              className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              {isGenerating ? "Generating..." : "Download PDF"}
             </button>
           </div>
         )}
       </div>
 
-      {/* Document Settings */}
-      {htmlContent && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Settings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Document Title</label>
-              <input
-                type="text"
-                value={documentTitle}
-                onChange={(e) => setDocumentTitle(e.target.value)}
-                placeholder="Enter the PDF file name..."
-                className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
-              <p className="mt-1.5 text-xs text-gray-400">File name: <strong>{documentTitle || "document"}.pdf</strong></p>
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('generate')}
+            className={`
+              py-4 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer
+              ${activeTab === 'generate' 
+                ? 'border-primary-500 text-primary-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <DocumentTextIcon className="h-5 w-5" />
+              Generate Document
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
-              <select
-                value={fontSize}
-                onChange={(e) => setFontSize(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer"
+          </button>
+          <button
+            onClick={() => setActiveTab('list')}
+            className={`
+              py-4 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer
+              ${activeTab === 'list' 
+                ? 'border-primary-500 text-primary-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+            `}
+          >
+            <div className="flex items-center gap-2">
+              <FolderIcon className="h-5 w-5" />
+              My Documents
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'generate' ? (
+        <>
+          {/* File Upload Area */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <ArrowUpTrayIcon className="h-5 w-5" />
+              Upload Markdown File
+            </h2>
+            {!fileName ? (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer
+                  ${isDragOver ? "border-primary-500 bg-primary-50 scale-[1.01]" : "border-gray-300 hover:border-primary-400 hover:bg-gray-50"}
+                `}
               >
-                {FONT_SIZE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-gray-400">Affects body text, headings scale proportionally</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Color Settings */}
-      {htmlContent && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <SwatchIcon className="h-5 w-5" />
-            Color Settings
-          </h2>
-
-          {/* Palette Presets */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Color Palettes</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {COLOR_PALETTES.map((palette) => (
-                <button
-                  key={palette.name}
-                  onClick={() => applyPalette(palette)}
-                  className={`
-                    p-3 rounded-lg border-2 transition-all text-left cursor-pointer
-                    ${activePalette === palette.name ? "border-primary-500 ring-2 ring-primary-200" : "border-gray-200 hover:border-gray-300"}
-                  `}
-                >
-                  <div className="flex gap-1 mb-2">
-                    {[palette.colors.h1, palette.colors.h2, palette.colors.h3, palette.colors.body].map((color, i) => (
-                      <div key={i} className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: color }} />
-                    ))}
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">{palette.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Individual Color Pickers */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">Custom Colors</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {colorFields.map((field) => (
-                <div key={field.key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <input
-                    type="color"
-                    value={colors[field.key]}
-                    onChange={(e) => updateColor(field.key, e.target.value)}
-                    className="w-10 h-10 rounded-md border border-gray-300 cursor-pointer p-0.5 bg-white"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{field.label}</p>
-                    <p className="text-xs text-gray-500 truncate">{field.description}</p>
-                    <input
-                      type="text"
-                      value={colors[field.key]}
-                      onChange={(e) => updateColor(field.key, e.target.value)}
-                      className="mt-1 w-full text-xs px-2 py-1 border border-gray-200 rounded font-mono bg-white"
-                    />
+                <DocumentTextIcon className={`h-16 w-16 mx-auto mb-4 ${isDragOver ? "text-primary-500" : "text-gray-400"}`} />
+                <p className="text-lg font-medium text-gray-700 mb-1">
+                  {isDragOver ? "Drop your file here" : "Drag & drop your .md file here"}
+                </p>
+                <p className="text-sm text-gray-500 mb-4">or click to browse files</p>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 transition-colors cursor-pointer">
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  Choose File
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".md,.markdown"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-4 bg-primary-50 border border-primary-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <DocumentTextIcon className="h-8 w-8 text-primary-600" />
+                  <div>
+                    <p className="font-medium text-gray-900">{fileName}</p>
+                    <p className="text-sm text-gray-500">{markdownContent.length} characters</p>
                   </div>
                 </div>
-              ))}
+                <button
+                  onClick={clearFile}
+                  className="flex items-center gap-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Document Settings */}
+          {htmlContent && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Settings</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Document Title</label>
+                  <input
+                    type="text"
+                    value={documentTitle}
+                    onChange={(e) => setDocumentTitle(e.target.value)}
+                    placeholder="Enter the PDF file name..."
+                    className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  <p className="mt-1.5 text-xs text-gray-400">File name: <strong>{documentTitle || "document"}.pdf</strong></p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+                  <select
+                    value={fontSize}
+                    onChange={(e) => setFontSize(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer"
+                  >
+                    {FONT_SIZE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1.5 text-xs text-gray-400">Affects body text, headings scale proportionally</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Color Settings */}
+          {htmlContent && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <SwatchIcon className="h-5 w-5" />
+                Color Settings
+              </h2>
+
+              {/* Palette Presets */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Color Palettes</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {COLOR_PALETTES.map((palette) => (
+                    <button
+                      key={palette.name}
+                      onClick={() => applyPalette(palette)}
+                      className={`
+                        p-3 rounded-lg border-2 transition-all text-left cursor-pointer
+                        ${activePalette === palette.name ? "border-primary-500 ring-2 ring-primary-200" : "border-gray-200 hover:border-gray-300"}
+                      `}
+                    >
+                      <div className="flex gap-1 mb-2">
+                        {[palette.colors.h1, palette.colors.h2, palette.colors.h3, palette.colors.body].map((color, i) => (
+                          <div key={i} className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: color }} />
+                        ))}
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">{palette.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Individual Color Pickers */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Custom Colors</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {colorFields.map((field) => (
+                    <div key={field.key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <input
+                        type="color"
+                        value={colors[field.key]}
+                        onChange={(e) => updateColor(field.key, e.target.value)}
+                        className="w-10 h-10 rounded-md border border-gray-300 cursor-pointer p-0.5 bg-white"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{field.label}</p>
+                        <p className="text-xs text-gray-500 truncate">{field.description}</p>
+                        <input
+                          type="text"
+                          value={colors[field.key]}
+                          onChange={(e) => updateColor(field.key, e.target.value)}
+                          className="mt-1 w-full text-xs px-2 py-1 border border-gray-200 rounded font-mono bg-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Markdown Preview */}
+          {htmlContent && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
+              <div className="border border-gray-200 rounded-lg bg-white overflow-auto" style={{ maxHeight: "800px" }}>
+                <style>{getPreviewStyles()}</style>
+                <div
+                  ref={previewRef}
+                  className="documenta-preview"
+                  style={{
+                    width: "8.5in",
+                    minHeight: "11in",
+                    margin: "0 auto",
+                    padding: "0.75in 1in",
+                    backgroundColor: "#ffffff",
+                    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                    fontSize: fontSize,
+                    lineHeight: "1.5",
+                    boxSizing: "border-box",
+                    overflow: "hidden",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: htmlContent }}
+                />
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* List Tab Content */
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <FolderIcon className="h-5 w-5" />
+              Saved Documents
+            </h2>
+            <div className="flex gap-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <InputText
+                  value={globalFilterValue}
+                  onChange={(e) => setGlobalFilterValue(e.target.value)}
+                  placeholder="Search documents..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-primary-500 focus:border-primary-500 w-64"
+                />
+              </div>
             </div>
           </div>
+
+          <div className="mt-4">
+            <DataTable
+              value={documents}
+              loading={loadingDocs}
+              globalFilter={globalFilterValue}
+              emptyMessage="No documents found."
+              className="p-datatable-sm"
+              rowHover
+              responsiveLayout="scroll"
+              pt={{
+                thead: { className: 'text-[11px] uppercase tracking-wider text-gray-500 bg-gray-50' },
+                tbody: { className: 'text-sm text-gray-700' },
+              }}
+            >
+              <Column 
+                field="name" 
+                header="Name" 
+                className="font-medium"
+                pt={{
+                  headerCell: { className: 'py-3 px-4 border-b border-gray-200' },
+                  bodyCell: { className: 'py-4 px-4 border-b border-gray-100' }
+                }}
+              />
+              <Column 
+                header="PDF Size" 
+                body={(rowData: StrideDocument) => formatSize(rowData.pdfFileSize)} 
+                pt={{
+                  headerCell: { className: 'py-3 px-4 border-b border-gray-200' },
+                  bodyCell: { className: 'py-4 px-4 border-b border-gray-100' }
+                }}
+              />
+              <Column 
+                header="MD Size" 
+                body={(rowData: StrideDocument) => formatSize(rowData.mdFileSize)} 
+                pt={{
+                  headerCell: { className: 'py-3 px-4 border-b border-gray-200' },
+                  bodyCell: { className: 'py-4 px-4 border-b border-gray-100' }
+                }}
+              />
+              <Column 
+                header="Created" 
+                body={(rowData: StrideDocument) => new Date(rowData.createdAt).toLocaleDateString()} 
+                pt={{
+                  headerCell: { className: 'py-3 px-4 border-b border-gray-200' },
+                  bodyCell: { className: 'py-4 px-4 border-b border-gray-100' }
+                }}
+              />
+            <Column
+              header="Actions"
+              headerStyle={{ width: '5rem', textAlign: 'center' }}
+              bodyStyle={{ textAlign: 'center', overflow: 'visible' }}
+              pt={{
+                headerCell: { className: 'py-3 px-4 border-b border-gray-200' },
+                bodyCell: { className: 'py-4 px-4 border-b border-gray-100' }
+              }}
+              body={(rowData: StrideDocument) => (
+                <div className="flex justify-center">
+                  <button
+                    onClick={(e) => {
+                      setSelectedDocForMenu(rowData);
+                      menuRef.current?.toggle(e);
+                    }}
+                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded-full transition-all cursor-pointer"
+                    title="Actions"
+                  >
+                    <EllipsisVerticalIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            />
+            </DataTable>
+          </div>
+          <Menu 
+            model={actionMenuItems} 
+            popup 
+            ref={menuRef} 
+            id="action_menu" 
+            pt={{
+              root: { className: 'border-0 shadow-lg rounded-lg overflow-hidden py-1 bg-white ring-1 ring-black ring-opacity-5' },
+              menu: { className: 'p-0 list-none' },
+              menuitem: { className: 'p-0' },
+              content: { className: 'p-0' }
+            }}
+          />
         </div>
       )}
 
-      {/* Markdown Preview */}
-      {htmlContent && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
-          <div className="border border-gray-200 rounded-lg bg-white overflow-auto" style={{ maxHeight: "800px" }}>
-            <style>{getPreviewStyles()}</style>
-            <div
-              ref={previewRef}
-              className="documenta-preview"
-              style={{
-                width: "8.5in",
-                minHeight: "11in",
-                margin: "0 auto",
-                padding: "0.75in 1in",
-                backgroundColor: "#ffffff",
-                fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                fontSize: fontSize,
-                lineHeight: "1.5",
-                boxSizing: "border-box",
-                overflow: "hidden",
-              }}
-              dangerouslySetInnerHTML={{ __html: htmlContent }}
-            />
-          </div>
-        </div>
-      )}
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setDocToDelete(null);
+        }}
+        onConfirm={handleDelete}
+        title="Delete Document"
+        message={`Are you sure you want to delete "${docToDelete?.name}"? This will remove both the PDF and Markdown files from the cloud.`}
+        variant="red"
+        confirmButtonText="Delete"
+      />
 
       {/* PDF Preview Dialog */}
       <Dialog open={previewDialogOpen} onClose={closePreviewDialog} className="relative z-50">

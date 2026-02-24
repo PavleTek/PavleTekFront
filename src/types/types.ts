@@ -610,3 +610,16 @@ export type InvoiceItem = {
 
 export type InvoiceTemplate = Invoice & { isTemplate: true };
 
+export interface StrideDocument {
+  id: number;
+  name: string;
+  mdR2Key?: string | null;
+  pdfR2Key?: string | null;
+  mdFileSize?: number | null;
+  pdfFileSize?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: number | null;
+  createdBy?: User | null;
+}
+
