@@ -1,7 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { marked } from "marked";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import {
   XMarkIcon,
@@ -197,19 +195,14 @@ const Documenta: React.FC = () => {
     setIsSaving(true);
     setError(null);
     try {
-      const pdf = await createPDF();
-      if (!pdf) throw new Error("Failed to generate PDF");
-      
-      const pdfBlob = pdf.output("blob");
-      const mdBlob = new Blob([markdownContent], { type: 'text/markdown' });
-      
-      const formData = new FormData();
-      formData.append('name', documentTitle);
-      formData.append('mdFile', mdBlob, `${documentTitle}.md`);
-      formData.append('pdfFile', pdfBlob, `${documentTitle}.pdf`);
-      
-      await strideDocService.create(formData);
+      await strideDocService.create({
+        name: documentTitle,
+        markdownContent,
+        colors,
+        fontSize
+      });
       setSuccess("Document saved to StrideDoc successfully");
+      fetchDocuments();
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to save document to cloud");
     } finally {
@@ -332,6 +325,69 @@ const Documenta: React.FC = () => {
     setActivePalette("");
   };
 
+  const downloadPDF = async () => {
+    if (!htmlContent) return;
+    setIsGenerating(true);
+    try {
+      const pdfBlob = await strideDocService.generatePdf({
+        markdownContent,
+        colors,
+        fontSize
+      });
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${documentTitle || "document"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const previewPDF = async () => {
+    if (!htmlContent) return;
+    setIsGenerating(true);
+    try {
+      const pdfBlob = await strideDocService.generatePdf({
+        markdownContent,
+        colors,
+        fontSize
+      });
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+      setPreviewPdfUrl(pdfUrl);
+      setPreviewDialogOpen(true);
+    } catch (err) {
+      console.error("Error generating PDF preview:", err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const closePreviewDialog = () => {
+    setPreviewDialogOpen(false);
+    if (previewPdfUrl) {
+      URL.revokeObjectURL(previewPdfUrl);
+      setPreviewPdfUrl(null);
+    }
+  };
+
+  const downloadFromPreview = () => {
+    if (previewPdfUrl) {
+      const link = document.createElement("a");
+      link.href = previewPdfUrl;
+      link.download = `${documentTitle || "document"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const getPreviewStyles = (): string => {
     return `
       .documenta-preview { overflow-wrap: break-word; word-break: break-word; }
@@ -357,163 +413,6 @@ const Documenta: React.FC = () => {
       .documenta-preview strong { font-weight: 700; }
       .documenta-preview em { font-style: italic; }
     `;
-  };
-
-  const convertOklchToRgb = (element: HTMLElement) => {
-    const allElements = element.querySelectorAll("*");
-    const processEl = (el: HTMLElement) => {
-      const computed = window.getComputedStyle(el);
-      const bg = computed.backgroundColor;
-      const color = computed.color;
-      const borderColor = computed.borderColor;
-      if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") el.style.backgroundColor = bg;
-      if (color && color !== "transparent") el.style.color = color;
-      if (borderColor && borderColor !== "transparent") el.style.borderColor = borderColor;
-    };
-    processEl(element);
-    allElements.forEach((el) => processEl(el as HTMLElement));
-  };
-
-  const findSafeBreakPoint = (canvas: HTMLCanvasElement, idealBreak: number, pageStart: number): number => {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return idealBreak;
-
-    const maxScanDistance = Math.floor((idealBreak - pageStart) * 0.2);
-
-    for (let y = idealBreak; y > idealBreak - maxScanDistance; y--) {
-      const rowData = ctx.getImageData(0, y, canvas.width, 1).data;
-      let isWhite = true;
-
-      for (let i = 0; i < rowData.length; i += 16) {
-        if (rowData[i] < 245 || rowData[i + 1] < 245 || rowData[i + 2] < 245) {
-          isWhite = false;
-          break;
-        }
-      }
-
-      if (isWhite) return y;
-    }
-
-    return idealBreak;
-  };
-
-  const createPDF = async () => {
-    if (!previewRef.current) return null;
-
-    const canvas = await html2canvas(previewRef.current, {
-      scale: 1.5,
-      useCORS: true,
-      logging: false,
-      backgroundColor: "#ffffff",
-      windowWidth: previewRef.current.scrollWidth,
-      width: previewRef.current.scrollWidth,
-      onclone: (_clonedDoc, element) => {
-        if (element) {
-          element.style.overflow = "hidden";
-          convertOklchToRgb(element);
-        }
-      },
-    });
-
-    const letterWidthMm = 215.9;
-    const letterHeightMm = 279.4;
-    const pxPerMm = canvas.width / letterWidthMm;
-    const pageHeightPx = Math.floor(letterHeightMm * pxPerMm);
-    const totalHeight = canvas.height;
-
-    const pdf = new jsPDF("p", "mm", "letter");
-
-    if (totalHeight <= pageHeightPx) {
-      const imgHeight = (totalHeight * letterWidthMm) / canvas.width;
-      const imgData = canvas.toDataURL("image/jpeg", 0.75);
-      pdf.addImage(imgData, "JPEG", 0, 0, letterWidthMm, imgHeight);
-      return pdf;
-    }
-
-    let currentY = 0;
-    let pageIndex = 0;
-
-    while (currentY < totalHeight) {
-      let nextBreak = currentY + pageHeightPx;
-
-      if (nextBreak >= totalHeight) {
-        nextBreak = totalHeight;
-      } else {
-        nextBreak = findSafeBreakPoint(canvas, nextBreak, currentY);
-      }
-
-      const sliceHeight = nextBreak - currentY;
-      const pageCanvas = document.createElement("canvas");
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = pageHeightPx;
-      const ctx = pageCanvas.getContext("2d")!;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-      ctx.drawImage(canvas, 0, currentY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-
-      const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.75);
-
-      if (pageIndex > 0) pdf.addPage();
-      pdf.addImage(pageImgData, "JPEG", 0, 0, letterWidthMm, letterHeightMm);
-
-      currentY = nextBreak;
-      pageIndex++;
-    }
-
-    return pdf;
-  };
-
-  const downloadPDF = async () => {
-    if (!htmlContent) return;
-    setIsGenerating(true);
-    try {
-      const pdf = await createPDF();
-      if (pdf) {
-        pdf.save(`${documentTitle || "document"}.pdf`);
-      }
-    } catch (err) {
-      console.error("Error generating PDF:", err);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const previewPDF = async () => {
-    if (!htmlContent) return;
-    setIsGenerating(true);
-    try {
-      const pdf = await createPDF();
-      if (pdf) {
-        const pdfBlob = pdf.output("blob");
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
-        setPreviewPdfUrl(pdfUrl);
-        setPreviewDialogOpen(true);
-      }
-    } catch (err) {
-      console.error("Error generating PDF preview:", err);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const closePreviewDialog = () => {
-    setPreviewDialogOpen(false);
-    if (previewPdfUrl) {
-      URL.revokeObjectURL(previewPdfUrl);
-      setPreviewPdfUrl(null);
-    }
-  };
-
-  const downloadFromPreview = () => {
-    if (previewPdfUrl) {
-      const link = document.createElement("a");
-      link.href = previewPdfUrl;
-      link.download = `${documentTitle || "document"}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
   };
 
   const colorFields: { key: keyof ColorSettings; label: string; description: string }[] = [

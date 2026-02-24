@@ -13,17 +13,22 @@ export const strideDocService = {
   /**
    * Create a new Stride document
    */
-  async create(formData: FormData): Promise<ApiResponse & { data: StrideDocument }> {
+  async create(data: { name: string, markdownContent: string, colors: any, fontSize: string }): Promise<ApiResponse & { data: StrideDocument }> {
     const response = await api.post<ApiResponse & { data: StrideDocument }>(
       '/admin/stride-docs', 
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      data
     );
     return response.data;
+  },
+
+  /**
+   * Generate a PDF on-demand
+   */
+  async generatePdf(data: { markdownContent: string, colors: any, fontSize: string }): Promise<Blob> {
+    const response = await api.post('/admin/stride-docs/generate-pdf', data, {
+      responseType: 'blob',
+    });
+    return new Blob([response.data], { type: 'application/pdf' });
   },
 
   /**
