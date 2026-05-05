@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -e
+
+echo "[pre-push] Running build..."
+npm run build
+
+echo "[pre-push] All checks passed."

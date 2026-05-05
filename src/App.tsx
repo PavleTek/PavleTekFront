@@ -17,6 +17,8 @@ import ContactsAndCompanies from "./pages/ContactsAndCompanies";
 import Mantenedores from "./pages/mantenedores";
 import Calendar from "./pages/Calendar";
 import Documenta from "./pages/Documenta";
+import QuoteInquiries from "./pages/QuoteInquiries";
+import MeetingRequests from "./pages/MeetingRequests";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -148,6 +150,26 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <Documenta />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/inquiries"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <DashboardLayout>
+              <QuoteInquiries />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/meeting-requests"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <DashboardLayout>
+              <MeetingRequests />
             </DashboardLayout>
           </ProtectedRoute>
         }
