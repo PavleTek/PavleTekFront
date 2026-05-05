@@ -7,9 +7,20 @@ export const configService = {
     return { config: response.data.config };
   },
 
-  async updateConfig(data: { twoFactorEnabled?: boolean; appName?: string; recoveryEmailSenderId?: number | null }): Promise<{ config: Configuration }> {
+  async updateConfig(data: {
+    twoFactorEnabled?: boolean;
+    appName?: string;
+    recoveryEmailSenderId?: number | null;
+    inquiriesNotificationEmail?: string | null;
+    notificationEmailSenderId?: number | null;
+  }): Promise<{ config: Configuration }> {
     const response = await api.put<ApiResponse & { config: Configuration }>('/admin/config', data);
     return { config: response.data.config };
+  },
+
+  async sendNotificationTest(): Promise<ApiResponse> {
+    const response = await api.post<ApiResponse>('/admin/config/notification-test');
+    return response.data;
   }
 };
 

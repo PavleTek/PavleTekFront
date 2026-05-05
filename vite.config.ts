@@ -10,8 +10,15 @@ export default defineConfig(({ mode }) => {
     ? env.VITE_ALLOWED_HOSTS.split(',').map((h) => h.trim())
     : ['localhost']
 
+  const devPort = Number(env.VITE_DEV_PORT) || 5174
+
   return {
     plugins: [react(), tailwindcss()],
+    server: {
+      host: true,
+      allowedHosts,
+      port: devPort,
+    },
     preview: {
       allowedHosts,
       port: Number(env.VITE_PORT) || 8080,

@@ -134,6 +134,12 @@ export interface Configuration {
     id: number;
     email: string;
   } | null;
+  inquiriesNotificationEmail?: string | null;
+  notificationEmailSenderId?: number | null;
+  notificationEmailSender?: {
+    id: number;
+    email: string;
+  } | null;
   updatedAt: string;
 }
 

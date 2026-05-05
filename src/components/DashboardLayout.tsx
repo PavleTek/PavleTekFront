@@ -15,8 +15,7 @@ import {
   EnvelopeIcon,
   CalendarDaysIcon,
   DocumentTextIcon,
-  InboxIcon,
-  VideoCameraIcon,
+  InboxArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useAuth } from "../contexts/AuthContext";
@@ -33,15 +32,9 @@ interface NavigationItem {
 const navigationItems: NavigationItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
   {
-    name: "Inquiries",
-    href: "/inquiries",
-    icon: InboxIcon,
-    allowedRoles: ["admin"],
-  },
-  {
-    name: "Meeting Requests",
-    href: "/meeting-requests",
-    icon: VideoCameraIcon,
+    name: "Submissions",
+    href: "/submissions",
+    icon: InboxArrowDownIcon,
     allowedRoles: ["admin"],
   },
   {

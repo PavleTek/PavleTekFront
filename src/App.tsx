@@ -17,8 +17,7 @@ import ContactsAndCompanies from "./pages/ContactsAndCompanies";
 import Mantenedores from "./pages/mantenedores";
 import Calendar from "./pages/Calendar";
 import Documenta from "./pages/Documenta";
-import QuoteInquiries from "./pages/QuoteInquiries";
-import MeetingRequests from "./pages/MeetingRequests";
+import Submissions from "./pages/Submissions";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -155,25 +154,17 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/inquiries"
+        path="/submissions"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <DashboardLayout>
-              <QuoteInquiries />
+              <Submissions />
             </DashboardLayout>
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/meeting-requests"
-        element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <DashboardLayout>
-              <MeetingRequests />
-            </DashboardLayout>
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/inquiries" element={<Navigate to="/submissions?tab=inquiries" replace />} />
+      <Route path="/meeting-requests" element={<Navigate to="/submissions?tab=meetings" replace />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

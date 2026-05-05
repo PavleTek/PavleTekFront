@@ -18,7 +18,10 @@ const AppSettings: React.FC = () => {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [appName, setAppName] = useState('Application');
   const [recoveryEmailSenderId, setRecoveryEmailSenderId] = useState<number | null>(null);
+  const [inquiriesNotificationEmail, setInquiriesNotificationEmail] = useState<string>('');
+  const [notificationEmailSenderId, setNotificationEmailSenderId] = useState<number | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [sendingNotificationTest, setSendingNotificationTest] = useState(false);
 
   // Email management dialog state
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -71,6 +74,8 @@ const AppSettings: React.FC = () => {
       setTwoFactorEnabled(config.twoFactorEnabled);
       setAppName(config.appName || 'Application');
       setRecoveryEmailSenderId(config.recoveryEmailSenderId || null);
+      setInquiriesNotificationEmail(config.inquiriesNotificationEmail || '');
+      setNotificationEmailSenderId(config.notificationEmailSenderId || null);
     } catch (err: any) {
       console.error('Failed to load config:', err);
     }
@@ -128,6 +133,37 @@ const AppSettings: React.FC = () => {
       setError(err.response?.data?.error || 'Failed to update recovery email');
     } finally {
       setLoadingConfig(false);
+    }
+  };
+
+  const handleUpdateNotificationConfig = async () => {
+    try {
+      setLoadingConfig(true);
+      setError(null);
+      const { config } = await configService.updateConfig({ 
+        inquiriesNotificationEmail: inquiriesNotificationEmail.trim() || null,
+        notificationEmailSenderId: notificationEmailSenderId
+      });
+      setInquiriesNotificationEmail(config.inquiriesNotificationEmail || '');
+      setNotificationEmailSenderId(config.notificationEmailSenderId || null);
+      setSuccess('Notification settings updated successfully');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update notification settings');
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  const handleSendNotificationTest = async () => {
+    try {
+      setSendingNotificationTest(true);
+      setError(null);
+      await configService.sendNotificationTest();
+      setSuccess('Test notification email sent successfully!');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to send test notification');
+    } finally {
+      setSendingNotificationTest(false);
     }
   };
 
@@ -723,6 +759,77 @@ const AppSettings: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Inquiry & Meeting Notifications Section */}
+      <div className="mb-8">
+        <div className="bg-white shadow-xs rounded-xl p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Inquiry & Meeting Notifications</h2>
+          <p className="text-sm text-gray-600 mb-6">
+            Configure where you want to receive email notifications when a new quote inquiry or meeting request is submitted.
+          </p>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label htmlFor="notificationEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                  Recipient Email
+                </label>
+                <input
+                  id="notificationEmail"
+                  type="email"
+                  value={inquiriesNotificationEmail}
+                  onChange={(e) => setInquiriesNotificationEmail(e.target.value)}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+                  placeholder="your-email@example.com"
+                />
+                <p className="mt-1 text-xs text-gray-500">Leave empty to disable notifications.</p>
+              </div>
+
+              <div>
+                <label htmlFor="notificationSender" className="block text-sm font-medium text-gray-700 mb-2">
+                  Notification Email Sender
+                </label>
+                <select
+                  id="notificationSender"
+                  value={notificationEmailSenderId || ''}
+                  onChange={(e) => setNotificationEmailSenderId(e.target.value === '' ? null : parseInt(e.target.value))}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600"
+                >
+                  <option value="">Select a sender...</option>
+                  {emails.map((email) => (
+                    <option key={email.id} value={email.id}>
+                      {email.email}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">The "From" address for notifications.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleUpdateNotificationConfig}
+                disabled={loadingConfig}
+                className="rounded-md bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                {loadingConfig ? 'Saving...' : 'Save Settings'}
+              </button>
+              
+              {inquiriesNotificationEmail && notificationEmailSenderId && (
+                <button
+                  type="button"
+                  onClick={handleSendNotificationTest}
+                  disabled={sendingNotificationTest || loadingConfig}
+                  className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  {sendingNotificationTest ? 'Sending...' : 'Send Test Notification'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Domains Section */}
       <div className="mb-8">
