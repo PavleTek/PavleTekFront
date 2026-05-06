@@ -11,15 +11,18 @@ import EmailDialog from "../components/EmailDialog";
 import PavletekInvoice, { type InvoiceItem } from "../assets/pdfTemplates/PavletekInvoice";
 import RegularInvoice from "../assets/pdfTemplates/RegularInvoice";
 import KibernumAS, { type KibernumASItem } from "../assets/pdfTemplates/KibernumAS";
+import PDFTools from "../components/pdfTools/PDFTools";
 import "../assets/invoice.css";
 
 type TemplateType = "pavletek" | "kibernum" | "regular";
+type PageTab = "tools" | "generator";
 
 const PDFGenerator: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>("pavletek");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isFormExpanded, setIsFormExpanded] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<PageTab>("tools");
 
   // Email functionality state
   const [emailDialogOpen, setEmailDialogOpen] = useState<boolean>(false);
@@ -1040,118 +1043,154 @@ const PDFGenerator: React.FC = () => {
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       {success && <SuccessBanner message={success} onDismiss={() => setSuccess(null)} />}
 
-      {/* Header with title and buttons */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">PDF Generator</h1>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={previewPDF}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <EyeIcon className="h-5 w-5" />
-            {isGenerating ? "Generating..." : "Preview"}
-          </button>
-          <button
-            onClick={() => generatePDF(false)}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            {isGenerating ? "Generating..." : "Download"}
-          </button>
-          <button
-            onClick={() => generatePDF(true)}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 bg-secondary-600 text-white px-4 py-2 rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <EnvelopeIcon className="h-5 w-5" />
-            {isGenerating ? "Generating..." : "Email"}
-          </button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">PDF Tools</h1>
+        <p className="mt-1 text-sm text-gray-600">PDF utilities and invoice templates</p>
       </div>
 
-      {/* Template Selection */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Template</label>
-        <select
-          value={selectedTemplate}
-          onChange={(e) => setSelectedTemplate(e.target.value as TemplateType)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-        >
-          <option value="pavletek">Pavletek Invoice</option>
-          <option value="regular">Regular Invoice</option>
-          <option value="kibernum">Kibernum AS</option>
-        </select>
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab("tools")}
+            className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer ${
+              activeTab === "tools"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            PDF Tools
+          </button>
+          <button
+            onClick={() => setActiveTab("generator")}
+            className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer ${
+              activeTab === "generator"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            Invoice Generator
+          </button>
+        </nav>
       </div>
 
-      {/* Form Inputs */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <button
-          type="button"
-          onClick={() => setIsFormExpanded(!isFormExpanded)}
-          className="w-full flex items-center justify-between mb-4 text-left"
-        >
-          <h2 className="text-lg font-semibold text-gray-900">Template Settings</h2>
-          {isFormExpanded ? (
-            <ChevronUpIcon className="h-5 w-5 text-gray-500" />
-          ) : (
-            <ChevronDownIcon className="h-5 w-5 text-gray-500" />
-          )}
-        </button>
-        {isFormExpanded && <div>{renderFormInputs()}</div>}
-      </div>
-
-      {/* Preview Section - Full Width */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <div className="overflow-hidden" style={{ width: '210mm', margin: '0 auto' }}>
-            {renderTemplate()}
+      {activeTab === "tools" ? (
+        <PDFTools />
+      ) : (
+        <>
+          {/* Header with title and buttons */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Invoice Generator</h2>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={previewPDF}
+                disabled={isGenerating}
+                className="flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                <EyeIcon className="h-5 w-5" />
+                {isGenerating ? "Generating..." : "Preview"}
+              </button>
+              <button
+                onClick={() => generatePDF(false)}
+                disabled={isGenerating}
+                className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                {isGenerating ? "Generating..." : "Download"}
+              </button>
+              <button
+                onClick={() => generatePDF(true)}
+                disabled={isGenerating}
+                className="flex items-center justify-center gap-2 bg-secondary-600 text-white px-4 py-2 rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                <EnvelopeIcon className="h-5 w-5" />
+                {isGenerating ? "Generating..." : "Email"}
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Email Dialog */}
-      <EmailDialog
-        open={emailDialogOpen}
-        onClose={closeEmailDialog}
-        onSend={handleSendEmail}
-        initialData={{
-          subject: `${getTemplateName()} Document`,
-          content: `Please find attached the PDF document: ${getTemplateName()}.pdf`,
-        }}
-        title="Send PDF via Email"
-      />
+          {/* Template Selection */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Template</label>
+            <select
+              value={selectedTemplate}
+              onChange={(e) => setSelectedTemplate(e.target.value as TemplateType)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="pavletek">Pavletek Invoice</option>
+              <option value="regular">Regular Invoice</option>
+              <option value="kibernum">Kibernum AS</option>
+            </select>
+          </div>
 
-      {/* PDF Preview Dialog */}
-      <Dialog open={previewDialogOpen} onClose={closePreviewDialog} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
-          <DialogPanel className="max-w-6xl w-full bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <DialogTitle className="text-lg font-semibold text-gray-900">PDF Preview - {getTemplateName()}</DialogTitle>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={downloadFromPreview}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
-                >
-                  <ArrowDownTrayIcon className="h-4 w-4" />
-                  Download
-                </button>
-                <button onClick={closePreviewDialog} className="text-gray-400 hover:text-gray-500">
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+          {/* Form Inputs */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <button
+              type="button"
+              onClick={() => setIsFormExpanded(!isFormExpanded)}
+              className="w-full flex items-center justify-between mb-4 text-left cursor-pointer"
+            >
+              <h2 className="text-lg font-semibold text-gray-900">Template Settings</h2>
+              {isFormExpanded ? (
+                <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+              ) : (
+                <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+              )}
+            </button>
+            {isFormExpanded && <div>{renderFormInputs()}</div>}
+          </div>
+
+          {/* Preview Section - Full Width */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="overflow-hidden" style={{ width: '210mm', margin: '0 auto' }}>
+                {renderTemplate()}
               </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-              {previewPdfUrl && <iframe src={previewPdfUrl} className="w-full h-full border-0" title="PDF Preview" style={{ minHeight: "600px" }} />}
+          </div>
+
+          {/* Email Dialog */}
+          <EmailDialog
+            open={emailDialogOpen}
+            onClose={closeEmailDialog}
+            onSend={handleSendEmail}
+            initialData={{
+              subject: `${getTemplateName()} Document`,
+              content: `Please find attached the PDF document: ${getTemplateName()}.pdf`,
+            }}
+            title="Send PDF via Email"
+          />
+
+          {/* PDF Preview Dialog */}
+          <Dialog open={previewDialogOpen} onClose={closePreviewDialog} className="relative z-50">
+            <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+            <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
+              <DialogPanel className="max-w-6xl w-full bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <DialogTitle className="text-lg font-semibold text-gray-900">PDF Preview - {getTemplateName()}</DialogTitle>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={downloadFromPreview}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm cursor-pointer"
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4" />
+                      Download
+                    </button>
+                    <button onClick={closePreviewDialog} className="text-gray-400 hover:text-gray-500 cursor-pointer">
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {previewPdfUrl && <iframe src={previewPdfUrl} className="w-full h-full border-0" title="PDF Preview" style={{ minHeight: "600px" }} />}
+                </div>
+              </DialogPanel>
             </div>
-          </DialogPanel>
-        </div>
-      </Dialog>
+          </Dialog>
+        </>
+      )}
     </div>
   );
 };

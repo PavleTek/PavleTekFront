@@ -50,7 +50,7 @@ const navigationItems: NavigationItem[] = [
     allowedRoles: ["admin", "manager", "accountant"],
   },
   {
-    name: "PDF Generator",
+    name: "PDF Tools",
     href: "/pdf-generator",
     allowedRoles: ["admin", "manager", "accountant"],
     icon: DocumentIcon,
