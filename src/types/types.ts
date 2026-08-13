@@ -629,3 +629,16 @@ export interface StrideDocument {
   createdBy?: User | null;
 }
 
+export interface VectorizeResult {
+  svg: string;
+  pngBase64: string;
+  jpgBase64: string;
+}
+
+export interface VectorizeOptions {
+  colorPrecision?: number;
+  filterSpeckle?: number;
+  cornerThreshold?: number;
+  paletteColors?: number;
+}
+

@@ -16,6 +16,8 @@ import {
   CalendarDaysIcon,
   DocumentTextIcon,
   InboxArrowDownIcon,
+  SparklesIcon,
+  ClipboardDocumentIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useAuth } from "../contexts/AuthContext";
@@ -83,6 +85,17 @@ const navigationItems: NavigationItem[] = [
     name: "Documents",
     href: "/documenta",
     icon: DocumentTextIcon,
+  },
+  {
+    name: "Logo Vectorizer",
+    href: "/logo-vectorizer",
+    icon: SparklesIcon,
+  },
+  {
+    name: "Copy Factory",
+    href: "/copy-paste-factory",
+    icon: ClipboardDocumentIcon,
+    allowedRoles: ["admin"],
   },
   {
     name: "Mantenedores",
@@ -170,7 +183,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                             }}
                             className={classNames(
                               location.pathname === item.href ? "bg-gray-50 text-primary-800" : "text-gray-700 hover:bg-gray-50 hover:text-primary-800",
-                              "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left"
+                              "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left cursor-pointer"
                             )}
                           >
                             <item.icon
@@ -224,7 +237,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                         onClick={() => navigate(item.href)}
                         className={classNames(
                           location.pathname === item.href ? "bg-gray-50 text-primary-800" : "text-gray-700 hover:bg-gray-50 hover:text-primary-800",
-                          "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left"
+                          "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left cursor-pointer"
                         )}
                       >
                         <item.icon

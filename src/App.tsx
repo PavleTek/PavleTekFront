@@ -18,6 +18,8 @@ import Mantenedores from "./pages/mantenedores";
 import Calendar from "./pages/Calendar";
 import Documenta from "./pages/Documenta";
 import Submissions from "./pages/Submissions";
+import LogoVectorizer from "./pages/LogoVectorizer";
+import CopyPasteFactory from "./pages/CopyPasteFactory";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -154,11 +156,31 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/logo-vectorizer"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <LogoVectorizer />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/submissions"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <DashboardLayout>
               <Submissions />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/copy-paste-factory"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <DashboardLayout>
+              <CopyPasteFactory />
             </DashboardLayout>
           </ProtectedRoute>
         }
